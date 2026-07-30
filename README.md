@@ -341,5 +341,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 ## Author
-
-Developed as an Enterprise AI Governance Solution for **PS-7.1 – The Decision Path Auditor**.
+Prakash K | Aspiring AIML Engineer
+Developed as an Enterprise AI Governance Solution for **The Decision Path Auditor**.
