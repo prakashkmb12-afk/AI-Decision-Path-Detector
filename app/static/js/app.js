@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const phone = getVal('form-kyc-phone');
       const docType = getVal('form-kyc-doctype', 'PAN Card');
       const docNum = getVal('form-kyc-docnum');
-      const faceMatch = getVal('form-kyc-facematch', '95');
+      const faceMatchRaw = getVal('form-kyc-facematch', '95');
       const address = getVal('form-kyc-address', 'Verified');
 
       if (!name) {
@@ -211,19 +211,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      const matchScore = parseFloat(faceMatchRaw);
+      const faceMatchScoreVal = isNaN(matchScore) ? 95.0 : matchScore;
+
       promptText = 
         `Evaluate KYC identity verification for ${name}. Email: ${email || 'priya@example.com'}, ` +
         `Phone: ${phone || '+91 9876543210'}. Document Type: ${docType}, Document ID: ${docNum || 'ABCDE1234F'}. ` +
-        `Face Match Rating: ${faceMatch}%, Address Verification: ${address}.`;
+        `Face Match Rating: ${faceMatchScoreVal}%, Address Verification: ${address}.`;
 
       payloadData = {
         user_id: 'usr_kyc_auditor',
         prompt: promptText,
         agent_type: 'kyc_verification',
-        credit_score: 750,
-        annual_income: 800000,
-        employment_type: 'Salaried',
-        loan_amount: 100000
+        document_type: docType,
+        document_number: docNum || 'ABCDE1234F',
+        face_match_score: faceMatchScoreVal,
+        address_status: address
       };
 
     } else if (workflowType === 'insurance_claim') {
@@ -238,20 +241,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const claimAmt = parseFloat(amountRaw) || 150000;
+      const claimAmt = parseFloat(amountRaw);
+      const claimAmtVal = isNaN(claimAmt) ? 150000.0 : claimAmt;
 
       promptText = 
         `Evaluate insurance claim for policyholder ${name}. Policy Number: ${policyNum || 'POL-9876543'}, ` +
-        `Claim Category: ${category}, Claim Amount: ₹${claimAmt}, Document Proof Attached: ${proof}.`;
+        `Claim Category: ${category}, Claim Amount: ₹${claimAmtVal}, Document Proof Attached: ${proof}.`;
 
       payloadData = {
         user_id: 'usr_claim_auditor',
         prompt: promptText,
         agent_type: 'insurance_claim',
-        credit_score: 750,
-        annual_income: 1000000,
-        employment_type: 'Salaried',
-        loan_amount: claimAmt
+        policy_number: policyNum || 'POL-9876543',
+        claim_category: category,
+        claim_amount: claimAmtVal,
+        proof_attached: proof
       };
     }
 

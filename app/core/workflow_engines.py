@@ -82,9 +82,9 @@ async def evaluate_loan_underwriting_tool(
 # =====================================================================
 @audit_tool("verify_identity_document")
 async def verify_identity_document_tool(wrapper: InstrumentedAgentWrapper, doc_type: str, doc_number: str) -> Dict[str, Any]:
-    logger.info(f"[TOOL START] verify_identity_document | Type: {doc_type}")
+    logger.info(f"[TOOL START] verify_identity_document | Type: {doc_type} | ID: {doc_number}")
     await asyncio.sleep(0.05)
-    is_valid = len(str(doc_number)) >= 5
+    is_valid = len(str(doc_number).strip()) >= 5
     return {
         "document_type": doc_type,
         "document_number": doc_number,
@@ -95,12 +95,12 @@ async def verify_identity_document_tool(wrapper: InstrumentedAgentWrapper, doc_t
 
 @audit_tool("evaluate_face_biometrics")
 async def evaluate_face_biometrics_tool(wrapper: InstrumentedAgentWrapper, match_score: float) -> Dict[str, Any]:
-    logger.info(f"[TOOL START] evaluate_face_biometrics | Match Rating: {match_score}%")
+    logger.info(f"[TOOL START] evaluate_face_biometrics | Rating: {match_score}%")
     await asyncio.sleep(0.05)
-    is_pass = match_score >= 90.0
+    is_pass = match_score >= 80.0
     return {
         "face_match_score_percent": match_score,
-        "required_threshold_percent": 90.0,
+        "required_threshold_percent": 80.0,
         "biometric_status": "MATCH" if is_pass else "MISMATCH"
     }
 
@@ -109,7 +109,10 @@ async def evaluate_face_biometrics_tool(wrapper: InstrumentedAgentWrapper, match
 async def verify_address_registry_tool(wrapper: InstrumentedAgentWrapper, address_status: str) -> Dict[str, Any]:
     logger.info(f"[TOOL START] verify_address_registry | Status: {address_status}")
     await asyncio.sleep(0.05)
-    is_verified = str(address_status).strip().lower() in ["verified", "matched", "match", "yes"]
+    status_clean = str(address_status).strip().lower()
+    is_verified = ("mismatch" not in status_clean) and ("fail" not in status_clean) and (
+        "verified" in status_clean or "match" in status_clean or "yes" in status_clean
+    )
     return {
         "address_verification_status": "VERIFIED" if is_verified else "MISMATCH",
         "registry_match": is_verified
@@ -131,10 +134,10 @@ async def evaluate_kyc_compliance_tool(
     rejection_reasons = []
 
     if not doc_valid:
-        rejection_reasons.append("Identity document number format is invalid")
+        rejection_reasons.append("Identity document number format is invalid or unreadable")
 
     if not face_pass:
-        rejection_reasons.append(f"Face match rating ({match_score}%) is below required minimum threshold of 90%")
+        rejection_reasons.append(f"Face match rating ({match_score}%) is below required minimum threshold of 80%")
 
     if not address_verified:
         rejection_reasons.append(f"Address verification status ({address_status}) indicates address mismatch")
@@ -158,7 +161,7 @@ async def evaluate_kyc_compliance_tool(
 async def verify_policy_status_tool(wrapper: InstrumentedAgentWrapper, policy_number: str, category: str) -> Dict[str, Any]:
     logger.info(f"[TOOL START] verify_policy_status | Policy: {policy_number}")
     await asyncio.sleep(0.05)
-    is_active = len(str(policy_number)) >= 3
+    is_active = len(str(policy_number).strip()) >= 3
     return {
         "policy_number": policy_number,
         "claim_category": category,
@@ -171,7 +174,10 @@ async def verify_policy_status_tool(wrapper: InstrumentedAgentWrapper, policy_nu
 async def validate_claim_documents_tool(wrapper: InstrumentedAgentWrapper, proof_attached: str) -> Dict[str, Any]:
     logger.info(f"[TOOL START] validate_claim_documents | Proof: {proof_attached}")
     await asyncio.sleep(0.05)
-    has_proof = str(proof_attached).strip().lower() in ["yes", "true", "verified", "attached", "yes (verified)"]
+    proof_clean = str(proof_attached).strip().lower()
+    has_proof = ("no" not in proof_clean) and ("missing" not in proof_clean) and (
+        "yes" in proof_clean or "attached" in proof_clean or "verified" in proof_clean or "true" in proof_clean
+    )
     return {
         "document_proof_attached": "ATTACHED" if has_proof else "MISSING",
         "proof_verified": has_proof
@@ -237,10 +243,18 @@ class LoanUnderwritingEngine(BaseWorkflowEngine):
         request_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         logger.info("[ENGINE START] LoanUnderwritingEngine")
-        credit_score = request_data.get("credit_score") or 750
-        annual_income = float(request_data.get("annual_income") or 1200000.0)
+        
+        raw_score = request_data.get("credit_score")
+        credit_score = int(raw_score) if raw_score is not None else 750
+
+        raw_income = request_data.get("annual_income")
+        annual_income = float(raw_income) if raw_income is not None else 1200000.0
+
         employment_type = str(request_data.get("employment_type") or "Salaried")
-        loan_amount = float(request_data.get("loan_amount") or 500000.0)
+
+        raw_amount = request_data.get("loan_amount")
+        loan_amount = float(raw_amount) if raw_amount is not None else 500000.0
+
         pan_card = str(request_data.get("pan_card") or "ABCDE1234F")
         account_no = str(request_data.get("account_no") or "5432109876543")
 
@@ -296,13 +310,16 @@ class KYCVerificationEngine(BaseWorkflowEngine):
         logger.info("[ENGINE START] KYCVerificationEngine")
         doc_type = str(request_data.get("document_type") or "PAN Card")
         doc_number = str(request_data.get("document_number") or "ABCDE1234F")
-        match_score = float(request_data.get("face_match_score") or 95.0)
+
+        raw_match = request_data.get("face_match_score")
+        match_score = float(raw_match) if raw_match is not None else 95.0
+
         address_status = str(request_data.get("address_status") or "Verified")
 
         rag_context = (
             "KYC Regulatory Verification Rules: "
             "1. Valid Government Identity Document (PAN, Aadhaar, Passport, Driving License). "
-            "2. Minimum Face Match Biometric Rating: 90%. "
+            "2. Minimum Face Match Biometric Rating: 80%. "
             "3. Address Verification Status: Verified Match (Mismatch ineligible)."
         )
         await wrapper.log_retrieved_context(rag_context)
@@ -353,7 +370,10 @@ class InsuranceClaimEngine(BaseWorkflowEngine):
         logger.info("[ENGINE START] InsuranceClaimEngine")
         policy_number = str(request_data.get("policy_number") or "POL-9876543")
         category = str(request_data.get("claim_category") or "Health")
-        claim_amount = float(request_data.get("claim_amount") or 150000.0)
+
+        raw_amount = request_data.get("claim_amount")
+        claim_amount = float(raw_amount) if raw_amount is not None else 150000.0
+
         proof_attached = str(request_data.get("proof_attached") or "Yes")
 
         rag_context = (
