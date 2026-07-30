@@ -142,37 +142,71 @@
         </form>
       </aside>
 
-      <!-- RIGHT COLUMN: AUDIT EXPLORER & TIMELINE -->
+      <!-- RIGHT COLUMN: APPLICATION RESULT & AUDIT TRACE -->
       <section class="card-panel">
         <div class="panel-title-bar">
-          <h2>Audit Explorer</h2>
+          <h2 id="right-panel-title">Application Result & Audit Trace</h2>
           <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary btn-sm" id="btn-toggle-history" style="display: none;">View Audit History</button>
             <button class="btn btn-secondary btn-sm" id="btn-new-app" style="display: none;">New Application</button>
-            <button class="btn btn-secondary btn-sm" id="btn-refresh-sessions" style="display: none;">Refresh</button>
           </div>
         </div>
 
-        <!-- INITIAL EMPTY STATE (WHEN NO RECORDS EXIST) -->
+        <!-- INITIAL EMPTY STATE (WHEN NO APPLICATION SUBMITTED) -->
         <div id="explorer-empty-state" class="empty-state-box">
           <div class="empty-state-icon">AMP</div>
-          <div class="empty-state-title">No Audit Records Available</div>
+          <div class="empty-state-title">No Application Submitted</div>
           <div class="empty-state-text">
-            Complete and submit a loan application to start system verification, process the decision, and generate an audit record.
+            Complete and submit a loan application on the left panel to start system verification, process the decision, and generate an audit record.
           </div>
         </div>
 
-        <!-- AUDIT SESSIONS DATA TABLE (SHOWN AFTER SUBMISSION) -->
-        <div id="explorer-data-section" style="display: none;">
+        <!-- CURRENT SUBMITTED APPLICATION RESULT CARD -->
+        <div id="current-result-card" style="display: none; background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Current Audit Session</span>
+              <div style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan);" id="current-card-session-id">-</div>
+            </div>
+            <div id="current-card-decision-badge">
+              <span class="badge badge-running">Processing</span>
+            </div>
+          </div>
+
+          <div class="kv-grid" style="margin-bottom: 1.25rem;">
+            <div class="kv-group"><span class="kv-label">Workflow</span><span class="kv-value">Loan Underwriting Workflow</span></div>
+            <div class="kv-group"><span class="kv-label">Audit Execution Status</span><span class="kv-value status-pass" id="current-card-status">Completed</span></div>
+            <div class="kv-group"><span class="kv-label">Personal Data Protection</span><span class="kv-value status-pass">Secured</span></div>
+            <div class="kv-group"><span class="kv-label">Submission Timestamp</span><span class="kv-value" id="current-card-time">-</span></div>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+            <button class="btn btn-primary btn-sm" id="btn-card-view-report" style="flex: 1;">
+              View Audit Report
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-card-view-timeline" style="flex: 1;">
+              View Audit Timeline
+            </button>
+          </div>
+        </div>
+
+        <!-- HISTORICAL AUDIT RECORDS EXPLORER TABLE (HIDDEN BY DEFAULT UNTIL EXPLICITLY REQUESTED) -->
+        <div id="explorer-data-section" style="display: none; border-top: 1px solid var(--border-color); padding-top: 1.25rem; margin-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">Historical Audit Log Ledger</h3>
+            <button class="btn btn-secondary btn-sm" id="btn-show-current-only">Show Only Current Application</button>
+          </div>
+
           <div class="table-toolbar">
-            <input type="text" class="form-control" id="filter-search" placeholder="Search by Session ID or User ID..." style="max-width: 300px;">
+            <input type="text" class="form-control" id="filter-search" placeholder="Search Session or User ID..." style="max-width: 260px;">
             
-            <select class="form-select" id="filter-workflow" style="max-width: 200px;">
+            <select class="form-select" id="filter-workflow" style="max-width: 180px;">
               <option value="">All Workflows</option>
               <option value="LoanApprovalAgent">Loan Underwriting Workflow</option>
               <option value="KYCVerificationAgent">KYC Verification Workflow</option>
             </select>
 
-            <select class="form-select" id="filter-status" style="max-width: 160px;">
+            <select class="form-select" id="filter-status" style="max-width: 150px;">
               <option value="">All Statuses</option>
               <option value="COMPLETED">Completed</option>
               <option value="FAILED">Failed</option>
@@ -197,8 +231,8 @@
           </div>
         </div>
 
-        <!-- RECONSTRUCTED AUDIT TIMELINE (SHOWN AFTER SELECTING TIMELINE) -->
-        <div id="timeline-section" style="margin-top: 2rem; display: none; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+        <!-- RECONSTRUCTED AUDIT TIMELINE -->
+        <div id="timeline-section" style="margin-top: 1.5rem; display: none; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
           <div class="panel-title-bar">
             <h2>Audit Timeline: <span id="active-session-id" style="font-family: var(--font-mono); color: var(--accent-cyan);"></span></h2>
             <button class="btn btn-primary btn-sm" id="btn-generate-summary">

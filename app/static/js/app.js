@@ -106,8 +106,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   onEvent('btn-new-app', 'click', () => {
     resetApplicationForm();
+    const emptyState = getEl('explorer-empty-state');
+    const resultCard = getEl('current-result-card');
+    const dataSection = getEl('explorer-data-section');
     const timelineSection = getEl('timeline-section');
+    const btnHistory = getEl('btn-toggle-history');
+    const btnNew = getEl('btn-new-app');
+
+    if (emptyState) emptyState.style.display = 'block';
+    if (resultCard) resultCard.style.display = 'none';
+    if (dataSection) dataSection.style.display = 'none';
     if (timelineSection) timelineSection.style.display = 'none';
+    if (btnHistory) btnHistory.style.display = 'none';
+    if (btnNew) btnNew.style.display = 'none';
+
+    currentSessionId = null;
     const nameEl = getEl('form-app-name');
     if (nameEl) nameEl.focus();
   });
@@ -188,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         annual_income: income,
         employment_type: employment,
         loan_amount: loan,
-        simulate_error: getBool('simulate-error-check', false) // Safe helper prevents null crash!
+        simulate_error: getBool('simulate-error-check', false)
       };
 
       const res = await fetch('/api/v1/agent/simulate', {
@@ -204,20 +217,32 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       currentSessionId = data.session_id;
 
-      // Reveal Data Panels
+      // Reveal Single Current Application Card & Top Action Buttons
       const emptyState = getEl('explorer-empty-state');
-      const dataSection = getEl('explorer-data-section');
+      const resultCard = getEl('current-result-card');
+      const btnHistory = getEl('btn-toggle-history');
       const btnNew = getEl('btn-new-app');
-      const btnRef = getEl('btn-refresh-sessions');
 
       if (emptyState) emptyState.style.display = 'none';
-      if (dataSection) dataSection.style.display = 'block';
+      if (resultCard) resultCard.style.display = 'block';
+      if (btnHistory) btnHistory.style.display = 'inline-flex';
       if (btnNew) btnNew.style.display = 'inline-flex';
-      if (btnRef) btnRef.style.display = 'inline-flex';
 
-      showToast('Verification Complete', 'Application processed and immutable audit record generated.', 'success');
+      // Populate Current Card Info
+      setTxt('current-card-session-id', data.session_id);
+      setTxt('current-card-time', new Date().toLocaleTimeString());
 
-      await loadSessions();
+      const isApproved = !data.final_output_redacted.toLowerCase().includes('rejected');
+      const badgeElem = getEl('current-card-decision-badge');
+      if (badgeElem) {
+        badgeElem.innerHTML = isApproved 
+          ? `<span class="badge badge-approved">APPROVED</span>`
+          : `<span class="badge badge-rejected">REJECTED</span>`;
+      }
+
+      showToast('Verification Complete', 'Application processed. Displaying decision trace and audit report.', 'success');
+
+      // Render 9-Step Timeline for Newly Created Session
       await viewTimeline(data.session_id);
 
     } catch (err) {
@@ -231,25 +256,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Current Card Button Event Handlers
+  onEvent('btn-card-view-report', 'click', () => {
+    if (currentSessionId) openReportModal(currentSessionId);
+  });
+
+  onEvent('btn-card-view-timeline', 'click', () => {
+    const timelineSection = getEl('timeline-section');
+    if (timelineSection) timelineSection.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  // Toggle Historical Audit Records View
+  onEvent('btn-toggle-history', 'click', async () => {
+    const dataSection = getEl('explorer-data-section');
+    const btnHistory = getEl('btn-toggle-history');
+    if (!dataSection) return;
+
+    if (dataSection.style.display === 'none' || !dataSection.style.display) {
+      dataSection.style.display = 'block';
+      if (btnHistory) btnHistory.textContent = 'Hide Audit History';
+      await loadSessions();
+      dataSection.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      dataSection.style.display = 'none';
+      if (btnHistory) btnHistory.textContent = 'View Audit History';
+    }
+  });
+
+  onEvent('btn-show-current-only', 'click', () => {
+    const filterInput = getEl('filter-search');
+    if (filterInput && currentSessionId) {
+      filterInput.value = currentSessionId;
+      renderFilteredSessions();
+    }
+  });
+
   // Load Sessions
   async function loadSessions() {
     try {
       const res = await fetch('/api/v1/audit/sessions');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       allSessionsCache = await res.json();
-
-      if (allSessionsCache.length > 0) {
-        const emptyState = getEl('explorer-empty-state');
-        const dataSection = getEl('explorer-data-section');
-        const btnNew = getEl('btn-new-app');
-        const btnRef = getEl('btn-refresh-sessions');
-
-        if (emptyState) emptyState.style.display = 'none';
-        if (dataSection) dataSection.style.display = 'block';
-        if (btnNew) btnNew.style.display = 'inline-flex';
-        if (btnRef) btnRef.style.display = 'inline-flex';
-      }
-
       renderFilteredSessions();
     } catch (err) {
       console.error('Failed to load audit sessions:', err);
