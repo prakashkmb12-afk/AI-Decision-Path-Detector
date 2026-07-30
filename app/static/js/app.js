@@ -489,16 +489,90 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             `;
           } else if (tName === 'evaluate_loan_underwriting') {
-            stepTitle = 'Workflow Eligibility Evaluation';
+            stepTitle = 'Loan Eligibility Assessment';
             const isApp = tResp.approved;
             bodyHtml = `
               <div class="kv-grid" style="margin-bottom: 0.75rem;">
-                <div class="kv-group"><span class="kv-label">Requested Value</span><span class="kv-value">₹${Number(tParams.loan_amount || 0).toLocaleString('en-IN')}</span></div>
-                <div class="kv-group"><span class="kv-label">Evaluation Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'Eligible (Approved)' : 'Not Eligible (Rejected)'}</span></div>
+                <div class="kv-group"><span class="kv-label">Requested Loan Amount</span><span class="kv-value">₹${Number(tParams.loan_amount || 0).toLocaleString('en-IN')}</span></div>
+                <div class="kv-group"><span class="kv-label">Assessment Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'Eligible (Approved)' : 'Not Eligible (Rejected)'}</span></div>
               </div>
               ${!isApp && tResp.rejection_reasons ? `
                 <div class="kv-group">
-                  <span class="kv-label">Policy Reason</span>
+                  <span class="kv-label">Reason</span>
+                  <div class="kv-value status-fail" style="background: var(--status-danger-bg); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--status-danger-border); font-size: 0.82rem; margin-top: 0.25rem;">
+                    ${(tResp.rejection_reasons || []).join('; ')}
+                  </div>
+                </div>
+              ` : ''}
+            `;
+          } else if (tName === 'verify_identity_document') {
+            stepTitle = 'Identity Document Verification';
+            bodyHtml = `
+              <div class="kv-grid">
+                <div class="kv-group"><span class="kv-label">Document Type</span><span class="kv-value">${tResp.document_type || tParams.doc_type || '-'}</span></div>
+                <div class="kv-group"><span class="kv-label">Document ID Number</span><span class="kv-value kv-value-mono">${tResp.document_number || tParams.doc_number || '-'}</span></div>
+                <div class="kv-group"><span class="kv-label">Document Status</span><span class="kv-value ${tResp.registry_verified ? 'status-pass' : 'status-fail'}">${tResp.document_status || 'VALID'}</span></div>
+              </div>
+            `;
+          } else if (tName === 'evaluate_face_biometrics') {
+            stepTitle = 'Face Biometric Match Verification';
+            bodyHtml = `
+              <div class="kv-grid">
+                <div class="kv-group"><span class="kv-label">Face Match Rating</span><span class="kv-value" style="font-weight: 700;">${tResp.face_match_score_percent || tParams.match_score || 0}%</span></div>
+                <div class="kv-group"><span class="kv-label">Required Threshold</span><span class="kv-value">90.0%</span></div>
+                <div class="kv-group"><span class="kv-label">Match Status</span><span class="kv-value ${tResp.biometric_status === 'MATCH' ? 'status-pass' : 'status-fail'}">${tResp.biometric_status || 'MATCH'}</span></div>
+              </div>
+            `;
+          } else if (tName === 'verify_address_registry') {
+            stepTitle = 'Address Registry Verification';
+            bodyHtml = `
+              <div class="kv-grid">
+                <div class="kv-group"><span class="kv-label">Address Verification Status</span><span class="kv-value ${tResp.registry_match ? 'status-pass' : 'status-fail'}">${tResp.address_verification_status || 'VERIFIED'}</span></div>
+              </div>
+            `;
+          } else if (tName === 'evaluate_kyc_compliance') {
+            stepTitle = 'KYC Compliance Assessment';
+            const isApp = tResp.approved;
+            bodyHtml = `
+              <div class="kv-grid" style="margin-bottom: 0.75rem;">
+                <div class="kv-group"><span class="kv-label">Compliance Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'VERIFIED' : 'REJECTED'}</span></div>
+              </div>
+              ${!isApp && tResp.rejection_reasons ? `
+                <div class="kv-group">
+                  <span class="kv-label">Reason</span>
+                  <div class="kv-value status-fail" style="background: var(--status-danger-bg); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--status-danger-border); font-size: 0.82rem; margin-top: 0.25rem;">
+                    ${(tResp.rejection_reasons || []).join('; ')}
+                  </div>
+                </div>
+              ` : ''}
+            `;
+          } else if (tName === 'verify_policy_status') {
+            stepTitle = 'Insurance Policy Status Verification';
+            bodyHtml = `
+              <div class="kv-grid">
+                <div class="kv-group"><span class="kv-label">Policy Number</span><span class="kv-value kv-value-mono">${tResp.policy_number || tParams.policy_number || '-'}</span></div>
+                <div class="kv-group"><span class="kv-label">Claim Category</span><span class="kv-value">${tResp.claim_category || tParams.category || '-'}</span></div>
+                <div class="kv-group"><span class="kv-label">Coverage Status</span><span class="kv-value ${tResp.coverage_valid ? 'status-pass' : 'status-fail'}">${tResp.policy_status || 'ACTIVE'}</span></div>
+              </div>
+            `;
+          } else if (tName === 'validate_claim_documents') {
+            stepTitle = 'Supporting Claim Document Validation';
+            bodyHtml = `
+              <div class="kv-grid">
+                <div class="kv-group"><span class="kv-label">Document Proof Attached</span><span class="kv-value ${tResp.proof_verified ? 'status-pass' : 'status-fail'}">${tResp.document_proof_attached || 'ATTACHED'}</span></div>
+              </div>
+            `;
+          } else if (tName === 'evaluate_claim_underwriting') {
+            stepTitle = 'Insurance Claim Assessment';
+            const isApp = tResp.approved;
+            bodyHtml = `
+              <div class="kv-grid" style="margin-bottom: 0.75rem;">
+                <div class="kv-group"><span class="kv-label">Claim Amount</span><span class="kv-value">₹${Number(tResp.claim_amount_inr || tParams.claim_amount || 0).toLocaleString('en-IN')}</span></div>
+                <div class="kv-group"><span class="kv-label">Claim Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'Eligible (Approved)' : 'Not Eligible (Rejected)'}</span></div>
+              </div>
+              ${!isApp && tResp.rejection_reasons ? `
+                <div class="kv-group">
+                  <span class="kv-label">Reason</span>
                   <div class="kv-value status-fail" style="background: var(--status-danger-bg); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--status-danger-border); font-size: 0.82rem; margin-top: 0.25rem;">
                     ${(tResp.rejection_reasons || []).join('; ')}
                   </div>
@@ -576,62 +650,179 @@ document.addEventListener('DOMContentLoaded', () => {
       setTxt('rep-workflow', session.agent_name);
       setTxt('rep-status', session.status);
 
-      // Extract Underwriting Tool parameters & response
-      const underwriteEvent = events.find(e => e.tool_name === 'evaluate_loan_underwriting');
-      const toolParams = underwriteEvent ? (underwriteEvent.tool_parameters || {}) : {};
-      const toolResp = underwriteEvent ? (underwriteEvent.tool_response || {}) : {};
-
-      const creditScore = toolParams.credit_score || 750;
-      const annualIncome = toolParams.annual_income || 800000;
-      const empType = toolParams.employment_type || 'Salaried';
-      const loanAmt = toolParams.loan_amount || 300000;
-
-      const isApproved = toolResp.approved !== undefined ? toolResp.approved : true;
-      const rejectionReasons = toolResp.rejection_reasons || [];
-
-      // Section 2: Request Params (Protected)
-      setTxt('rep-app-income', `₹${Number(annualIncome).toLocaleString('en-IN')}`);
-      setTxt('rep-app-employment', empType);
-      setTxt('rep-app-loan', `₹${Number(loanAmt).toLocaleString('en-IN')}`);
-      setTxt('rep-app-score', creditScore);
-
-      // Section 3: Decision Outcome
-      const badgeElem = getEl('rep-decision-badge');
-      if (badgeElem) {
-        badgeElem.innerHTML = isApproved 
-          ? `<span class="badge badge-approved">APPROVED / VERIFIED</span>`
-          : `<span class="badge badge-rejected">REJECTED</span>`;
-      }
-
-      setTxt('rep-confidence', `${(summaryData.confidence_score * 100).toFixed(1)}%`);
-      setTxt('rep-decision-reasons', isApproved
-        ? "The request satisfied all credit score, annual income, employment stability, and policy requirements."
-        : rejectionReasons.join("; ") || "Ineligible under workflow policy criteria.");
-
-      // Section 5: Policy Evaluation Matrix Table
-      const maxLimit = annualIncome * 5.0;
-      const csPass = creditScore >= 700;
-      const incPass = annualIncome >= 600000;
-      const empPass = String(empType).toLowerCase() !== 'contract employee';
-      const amtPass = loanAmt <= maxLimit;
-
-      const matrixRows = [
-        { req: "Credit Score Threshold", val: creditScore, thresh: "700", pass: csPass },
-        { req: "Annual Income Threshold", val: `₹${Number(annualIncome).toLocaleString('en-IN')}`, thresh: "₹6,00,000", pass: incPass },
-        { req: "Employment Category Eligibility", val: empType, thresh: "Salaried / Self-Employed", pass: empPass },
-        { req: "Maximum Limit Ratio", val: `₹${Number(loanAmt).toLocaleString('en-IN')}`, thresh: `₹${Number(maxLimit).toLocaleString('en-IN')}`, pass: amtPass }
-      ];
-
+      const agentName = session.agent_name || 'LoanApprovalAgent';
+      const paramsGrid = getEl('rep-params-grid');
       const tableBody = getEl('rep-policy-table-body');
-      if (tableBody) {
-        tableBody.innerHTML = matrixRows.map(r => `
-          <tr>
-            <td style="font-weight: 500;">${r.req}</td>
-            <td>${r.val}</td>
-            <td style="color: var(--text-muted);">${r.thresh}</td>
-            <td class="${r.pass ? 'status-pass' : 'status-fail'}">${r.pass ? 'PASSED' : 'FAILED'}</td>
-          </tr>
-        `).join('');
+
+      if (agentName === 'KYCVerificationAgent') {
+        const kycEvalEvent = events.find(e => e.tool_name === 'evaluate_kyc_compliance');
+        const kycParams = kycEvalEvent ? (kycEvalEvent.tool_parameters || {}) : {};
+        const kycResp = kycEvalEvent ? (kycEvalEvent.tool_response || {}) : {};
+
+        const docType = kycResp.document_type || kycParams.doc_type || 'PAN Card';
+        const matchScore = kycResp.face_match_score_percent !== undefined ? kycResp.face_match_score_percent : (kycParams.match_score || 95);
+        const addressStatus = kycResp.address_status || kycParams.address_status || 'Verified';
+        const isApproved = kycResp.approved !== undefined ? kycResp.approved : true;
+        const rejectionReasons = kycResp.rejection_reasons || [];
+
+        if (paramsGrid) {
+          paramsGrid.innerHTML = `
+            <div class="kv-group"><span class="kv-label">Subject Full Name</span><span class="kv-value">[PROTECTED_NAME]</span></div>
+            <div class="kv-group"><span class="kv-label">Identity Document Type</span><span class="kv-value">${docType}</span></div>
+            <div class="kv-group"><span class="kv-label">Document ID Number</span><span class="kv-value kv-value-mono">[PROTECTED_DOC_ID]</span></div>
+            <div class="kv-group"><span class="kv-label">Face Match Rating</span><span class="kv-value">${matchScore}%</span></div>
+            <div class="kv-group"><span class="kv-label">Address Status</span><span class="kv-value">${addressStatus}</span></div>
+          `;
+        }
+
+        const docPass = kycParams.doc_valid !== false;
+        const facePass = matchScore >= 90;
+        const addrPass = String(addressStatus).toLowerCase().includes('verif') || String(addressStatus).toLowerCase().includes('match');
+
+        const matrixRows = [
+          { req: "Document Format Validation", val: "Valid Format", thresh: "Registry Match", pass: docPass },
+          { req: "Face Match Biometric Threshold", val: `${matchScore}%`, thresh: ">= 90%", pass: facePass },
+          { req: "Address Verification Match", val: addressStatus, thresh: "Verified Match", pass: addrPass }
+        ];
+
+        if (tableBody) {
+          tableBody.innerHTML = matrixRows.map(r => `
+            <tr>
+              <td style="font-weight: 500;">${r.req}</td>
+              <td>${r.val}</td>
+              <td style="color: var(--text-muted);">${r.thresh}</td>
+              <td class="${r.pass ? 'status-pass' : 'status-fail'}">${r.pass ? 'PASSED' : 'FAILED'}</td>
+            </tr>
+          `).join('');
+        }
+
+        const badgeElem = getEl('rep-decision-badge');
+        if (badgeElem) {
+          badgeElem.innerHTML = isApproved 
+            ? `<span class="badge badge-approved">VERIFIED</span>`
+            : `<span class="badge badge-rejected">REJECTED</span>`;
+        }
+
+        setTxt('rep-confidence', `${(summaryData.confidence_score * 100).toFixed(1)}%`);
+        setTxt('rep-decision-reasons', isApproved
+          ? "The subject satisfied all document validity, biometric face match, and address registry requirements."
+          : rejectionReasons.join("; ") || "Ineligible under KYC regulatory rules.");
+
+      } else if (agentName === 'InsuranceClaimAgent') {
+        const claimEvalEvent = events.find(e => e.tool_name === 'evaluate_claim_underwriting');
+        const claimParams = claimEvalEvent ? (claimEvalEvent.tool_parameters || {}) : {};
+        const claimResp = claimEvalEvent ? (claimEvalEvent.tool_response || {}) : {};
+
+        const policyNum = claimResp.policy_number || claimParams.policy_number || 'POL-9876543';
+        const category = claimResp.claim_category || claimParams.category || 'Health';
+        const claimAmt = claimResp.claim_amount_inr !== undefined ? claimResp.claim_amount_inr : (claimParams.claim_amount || 150000);
+        const isApproved = claimResp.approved !== undefined ? claimResp.approved : true;
+        const rejectionReasons = claimResp.rejection_reasons || [];
+
+        if (paramsGrid) {
+          paramsGrid.innerHTML = `
+            <div class="kv-group"><span class="kv-label">Policyholder Full Name</span><span class="kv-value">[PROTECTED_NAME]</span></div>
+            <div class="kv-group"><span class="kv-label">Policy Number</span><span class="kv-value kv-value-mono">${policyNum}</span></div>
+            <div class="kv-group"><span class="kv-label">Claim Category</span><span class="kv-value">${category}</span></div>
+            <div class="kv-group"><span class="kv-label">Claim Amount</span><span class="kv-value">₹${Number(claimAmt).toLocaleString('en-IN')}</span></div>
+          `;
+        }
+
+        const polPass = claimParams.policy_active !== false;
+        const proofPass = claimParams.has_proof !== false;
+        const amtPass = claimAmt <= 500000;
+
+        const matrixRows = [
+          { req: "Policy Active Status", val: "Active", thresh: "Valid Coverage", pass: polPass },
+          { req: "Document Proof Verification", val: proofPass ? "Attached" : "Missing", thresh: "Required Proof", pass: proofPass },
+          { req: "Automatic Claim Limit", val: `₹${Number(claimAmt).toLocaleString('en-IN')}`, thresh: "<= ₹5,00,000", pass: amtPass }
+        ];
+
+        if (tableBody) {
+          tableBody.innerHTML = matrixRows.map(r => `
+            <tr>
+              <td style="font-weight: 500;">${r.req}</td>
+              <td>${r.val}</td>
+              <td style="color: var(--text-muted);">${r.thresh}</td>
+              <td class="${r.pass ? 'status-pass' : 'status-fail'}">${r.pass ? 'PASSED' : 'FAILED'}</td>
+            </tr>
+          `).join('');
+        }
+
+        const badgeElem = getEl('rep-decision-badge');
+        if (badgeElem) {
+          badgeElem.innerHTML = isApproved 
+            ? `<span class="badge badge-approved">APPROVED</span>`
+            : `<span class="badge badge-rejected">REJECTED</span>`;
+        }
+
+        setTxt('rep-confidence', `${(summaryData.confidence_score * 100).toFixed(1)}%`);
+        setTxt('rep-decision-reasons', isApproved
+          ? "The claim satisfied all policy active status, supporting proof document, and claim limit thresholds."
+          : rejectionReasons.join("; ") || "Ineligible under insurance underwriting rules.");
+
+      } else {
+        // Default Loan Approval Agent
+        const underwriteEvent = events.find(e => e.tool_name === 'evaluate_loan_underwriting');
+        const toolParams = underwriteEvent ? (underwriteEvent.tool_parameters || {}) : {};
+        const toolResp = underwriteEvent ? (underwriteEvent.tool_response || {}) : {};
+
+        const creditScore = toolParams.credit_score || 750;
+        const annualIncome = toolParams.annual_income || 800000;
+        const empType = toolParams.employment_type || 'Salaried';
+        const loanAmt = toolParams.loan_amount || 300000;
+
+        const isApproved = toolResp.approved !== undefined ? toolResp.approved : true;
+        const rejectionReasons = toolResp.rejection_reasons || [];
+
+        if (paramsGrid) {
+          paramsGrid.innerHTML = `
+            <div class="kv-group"><span class="kv-label">Applicant Full Name</span><span class="kv-value">[PROTECTED_NAME]</span></div>
+            <div class="kv-group"><span class="kv-label">PAN Number</span><span class="kv-value kv-value-mono">[PROTECTED_PAN]</span></div>
+            <div class="kv-group"><span class="kv-label">Email Address</span><span class="kv-value">[PROTECTED_EMAIL]</span></div>
+            <div class="kv-group"><span class="kv-label">Aadhaar Number</span><span class="kv-value kv-value-mono">[PROTECTED_AADHAAR]</span></div>
+            <div class="kv-group"><span class="kv-label">Annual Income</span><span class="kv-value">₹${Number(annualIncome).toLocaleString('en-IN')}</span></div>
+            <div class="kv-group"><span class="kv-label">Employment Type</span><span class="kv-value">${empType}</span></div>
+            <div class="kv-group"><span class="kv-label">Requested Loan Amount</span><span class="kv-value">₹${Number(loanAmt).toLocaleString('en-IN')}</span></div>
+            <div class="kv-group"><span class="kv-label">Credit Score</span><span class="kv-value">${creditScore}</span></div>
+          `;
+        }
+
+        const maxLimit = annualIncome * 5.0;
+        const csPass = creditScore >= 700;
+        const incPass = annualIncome >= 600000;
+        const empPass = String(empType).toLowerCase() !== 'contract employee';
+        const amtPass = loanAmt <= maxLimit;
+
+        const matrixRows = [
+          { req: "Credit Score Threshold", val: creditScore, thresh: "700", pass: csPass },
+          { req: "Annual Income Threshold", val: `₹${Number(annualIncome).toLocaleString('en-IN')}`, thresh: "₹6,00,000", pass: incPass },
+          { req: "Employment Category Eligibility", val: empType, thresh: "Salaried / Self-Employed", pass: empPass },
+          { req: "Maximum Limit Ratio", val: `₹${Number(loanAmt).toLocaleString('en-IN')}`, thresh: `₹${Number(maxLimit).toLocaleString('en-IN')}`, pass: amtPass }
+        ];
+
+        if (tableBody) {
+          tableBody.innerHTML = matrixRows.map(r => `
+            <tr>
+              <td style="font-weight: 500;">${r.req}</td>
+              <td>${r.val}</td>
+              <td style="color: var(--text-muted);">${r.thresh}</td>
+              <td class="${r.pass ? 'status-pass' : 'status-fail'}">${r.pass ? 'PASSED' : 'FAILED'}</td>
+            </tr>
+          `).join('');
+        }
+
+        const badgeElem = getEl('rep-decision-badge');
+        if (badgeElem) {
+          badgeElem.innerHTML = isApproved 
+            ? `<span class="badge badge-approved">APPROVED</span>`
+            : `<span class="badge badge-rejected">REJECTED</span>`;
+        }
+
+        setTxt('rep-confidence', `${(summaryData.confidence_score * 100).toFixed(1)}%`);
+        setTxt('rep-decision-reasons', isApproved
+          ? "The request satisfied all credit score, annual income, employment stability, and policy requirements."
+          : rejectionReasons.join("; ") || "Ineligible under workflow policy criteria.");
       }
 
       // Section 6: Formal Decision Narrative
@@ -641,9 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Section 7: Recommended Next Step
-      setTxt('rep-next-steps', isApproved
-        ? "Proceed to next operational step or document execution."
-        : "You may re-apply after addressing policy requirements or contacting system administration for manual review.");
+      setTxt('rep-next-steps', "Proceed to next operational step or review policy details.");
 
     } catch (err) {
       console.error('Report modal generation error:', err);

@@ -8,11 +8,23 @@ class AgentSimulationRequest(BaseModel):
     prompt: str = Field(..., description="User request / prompt for the agent (may contain PII)")
     agent_type: str = Field("loan_approval", description="Agent workflow type: 'loan_approval' or 'kyc_verifier'")
     
-    # Optional structured financial parameters (if not provided, extracted from prompt text)
+    # Optional structured parameters for Loan Underwriting
     credit_score: Optional[int] = Field(None, description="Explicit credit score (e.g. 598 or 780)")
     annual_income: Optional[float] = Field(None, description="Annual income in INR (e.g. 320000 or 1200000)")
     employment_type: Optional[str] = Field(None, description="Employment type: 'Salaried', 'Self-Employed', 'Contract Employee'")
     loan_amount: Optional[float] = Field(None, description="Requested loan amount in INR (e.g. 3000000)")
+
+    # Optional structured parameters for KYC Verification
+    document_type: Optional[str] = Field(None, description="ID Document Type (e.g. PAN Card, Passport)")
+    document_number: Optional[str] = Field(None, description="ID Document Number")
+    face_match_score: Optional[float] = Field(None, description="Face match rating % (e.g. 95)")
+    address_status: Optional[str] = Field(None, description="Address verification status: 'Verified' or 'Mismatch'")
+
+    # Optional structured parameters for Insurance Claim Processing
+    policy_number: Optional[str] = Field(None, description="Policy number")
+    claim_category: Optional[str] = Field(None, description="Claim Category: Health, Vehicle, Property")
+    claim_amount: Optional[float] = Field(None, description="Claim amount in INR")
+    proof_attached: Optional[str] = Field(None, description="Document proof attached: 'Yes' or 'No'")
 
     simulate_error: bool = Field(False, description="Whether to simulate a tool/workflow failure for error audit testing")
 
