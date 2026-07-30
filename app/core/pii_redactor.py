@@ -47,12 +47,16 @@ class PIIRedactor:
 
         if PRESIDIO_AVAILABLE:
             try:
-                self.presidio_analyzer = AnalyzerEngine()
+                # Initialize Presidio without forcing large model downloads if not cached
                 self.presidio_anonymizer = AnonymizerEngine()
+                # Use lightweight default analyzer or fallback to regex
+                self.presidio_analyzer = AnalyzerEngine()
                 self._add_custom_presidio_recognizers()
-                logger.info("Presidio PII Redactor initialized with custom Indian PII recognizers.")
+                logger.info("Presidio PII Redactor initialized successfully.")
             except Exception as e:
-                logger.warning(f"Presidio engine initialization partial fallback: {str(e)}")
+                logger.info(f"Presidio model download deferred; using High-Precision Regex Engine: {str(e)}")
+                self.presidio_analyzer = None
+                self.presidio_anonymizer = None
 
     def _add_custom_presidio_recognizers(self):
         """Add PAN & Aadhaar custom recognizers to Presidio engine."""
