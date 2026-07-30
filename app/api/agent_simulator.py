@@ -1,6 +1,7 @@
+import re
 import uuid
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,43 +13,144 @@ from app.core.pii_redactor import pii_redactor
 router = APIRouter(prefix="/api/v1/agent", tags=["Agent Simulator"])
 
 
-# --- AUDITED SIMULATOR TOOLS ---
-@audit_tool("verify_credit_score")
-async def verify_credit_score_tool(wrapper: InstrumentedAgentWrapper, user_id: str, pan_card: str) -> Dict[str, Any]:
-    """Simulated credit agency lookup tool."""
-    await asyncio.sleep(0.05) # Simulate network latency
+def extract_financial_details(
+    prompt: str,
+    req_credit: Optional[int] = None,
+    req_income: Optional[float] = None,
+    req_emp: Optional[str] = None,
+    req_amount: Optional[float] = None
+) -> Dict[str, Any]:
+    """
+    Parses dynamic financial details from prompt or explicit request fields.
+    """
+    # 1. Credit Score Extraction
+    credit_score = req_credit
+    if credit_score is None:
+        cs_match = re.search(r'(?:credit score|cibil|score)[:\s]*(\d{3})', prompt, re.IGNORECASE)
+        if cs_match:
+            credit_score = int(cs_match.group(1))
+        else:
+            digits = re.findall(r'\b([3-8]\d{2}|900)\b', prompt)
+            credit_score = int(digits[0]) if digits else 750
+
+    # 2. Annual Income Extraction
+    annual_income = req_income
+    if annual_income is None:
+        inc_match = re.search(r'(?:annual income|income|salary)[:\s]*[₹\s]*([0-9,]+)', prompt, re.IGNORECASE)
+        if inc_match:
+            annual_income = float(inc_match.group(1).replace(',', ''))
+        else:
+            annual_income = 800000.0
+
+    # 3. Employment Type Extraction
+    employment_type = req_emp
+    if not employment_type:
+        if re.search(r'contract', prompt, re.IGNORECASE):
+            employment_type = "Contract Employee"
+        elif re.search(r'self[-\s]?employed|business', prompt, re.IGNORECASE):
+            employment_type = "Self-Employed"
+        else:
+            employment_type = "Salaried"
+
+    # 4. Loan Amount Extraction
+    loan_amount = req_amount
+    if loan_amount is None:
+        amt_match = re.search(r'(?:loan amount|amount|requested)[:\s]*[₹\s]*([0-9,]+)', prompt, re.IGNORECASE)
+        if amt_match:
+            loan_amount = float(amt_match.group(1).replace(',', ''))
+        else:
+            loan_amount = 300000.0
+
+    # PAN Card extraction
+    pan_match = re.search(r'\b[A-Z]{5}[0-9]{4}[A-Z]{1}\b', prompt)
+    pan_card = pan_match.group(0) if pan_match else "ABCDE1234F"
+
+    # Account Number extraction
+    acc_match = re.search(r'\b\d{10,16}\b', prompt)
+    account_no = acc_match.group(0) if acc_match else "9876543210"
+
     return {
-        "credit_score": 780,
-        "credit_tier": "EXCELLENT",
+        "credit_score": credit_score,
+        "annual_income": annual_income,
+        "employment_type": employment_type,
+        "loan_amount": loan_amount,
+        "pan_card": pan_card,
+        "account_no": account_no
+    }
+
+
+# --- AUDITED REAL DYNAMIC TOOLS ---
+@audit_tool("verify_credit_score")
+async def verify_credit_score_tool(wrapper: InstrumentedAgentWrapper, user_id: str, pan_card: str, credit_score: int) -> Dict[str, Any]:
+    """Credit agency lookup tool evaluating dynamic credit score."""
+    await asyncio.sleep(0.05)
+    tier = "EXCELLENT" if credit_score >= 750 else ("GOOD" if credit_score >= 700 else "POOR")
+    return {
+        "credit_score": credit_score,
+        "credit_tier": tier,
         "bureau": "CIBIL",
-        "verified_pan": pan_card
+        "verified_pan": pan_card,
+        "minimum_threshold_required": 700,
+        "is_score_eligible": credit_score >= 700
     }
 
 
 @audit_tool("check_account_balance")
-async def check_account_balance_tool(wrapper: InstrumentedAgentWrapper, account_no: str) -> Dict[str, Any]:
-    """Simulated core banking ledger tool."""
+async def check_account_balance_tool(wrapper: InstrumentedAgentWrapper, account_no: str, annual_income: float) -> Dict[str, Any]:
+    """Core banking ledger tool evaluating dynamic account balance."""
     await asyncio.sleep(0.05)
+    estimated_monthly_balance = round(annual_income / 12.0 * 0.65, 2)
     return {
         "account_number": account_no,
-        "current_balance_inr": 250000.0,
-        "monthly_avg_balance_inr": 180000.0,
+        "annual_income_inr": annual_income,
+        "monthly_avg_balance_inr": estimated_monthly_balance,
         "account_status": "ACTIVE"
     }
 
 
 @audit_tool("evaluate_loan_underwriting")
 async def evaluate_loan_underwriting_tool(
-    wrapper: InstrumentedAgentWrapper, loan_amount: float, credit_score: int, avg_balance: float
+    wrapper: InstrumentedAgentWrapper,
+    credit_score: int,
+    annual_income: float,
+    employment_type: str,
+    loan_amount: float
 ) -> Dict[str, Any]:
-    """Simulated underwriting decision engine tool."""
+    """
+    Dynamic Underwriting Decision Engine evaluating real policy rules:
+    - Rule 1: Credit Score >= 700
+    - Rule 2: Annual Income >= ₹6,00,000
+    - Rule 3: Employment Type != 'Contract Employee'
+    - Rule 4: Loan Amount <= 5x Annual Income
+    """
     await asyncio.sleep(0.05)
-    is_approved = credit_score >= 700 and avg_balance >= (loan_amount * 0.1)
+    rejection_reasons = []
+
+    if credit_score < 700:
+        rejection_reasons.append(f"CIBIL credit score ({credit_score}) is below required minimum of 700")
+
+    if annual_income < 600000.0:
+        rejection_reasons.append(f"Annual income (₹{annual_income:,.2f}) is below minimum requirement of ₹6,00,000")
+
+    if employment_type.strip().lower() == "contract employee":
+        rejection_reasons.append("Employment type 'Contract Employee' is ineligible under underwriting policy")
+
+    max_eligible_loan = annual_income * 5.0
+    if loan_amount > max_eligible_loan:
+        rejection_reasons.append(f"Requested loan (₹{loan_amount:,.2f}) exceeds max eligible limit of 5x income (₹{max_eligible_loan:,.2f})")
+
+    is_approved = len(rejection_reasons) == 0
+
     return {
         "requested_amount_inr": loan_amount,
+        "annual_income_inr": annual_income,
+        "credit_score": credit_score,
+        "employment_type": employment_type,
         "approved": is_approved,
+        "decision": "APPROVED" if is_approved else "REJECTED",
+        "rejection_reasons": rejection_reasons,
         "interest_rate_percent": 8.5 if is_approved else None,
-        "max_approved_limit_inr": 500000.0 if is_approved else 0.0,
+        "max_approved_limit_inr": max_eligible_loan if is_approved else 0.0,
         "risk_grade": "LOW" if is_approved else "HIGH"
     }
 
@@ -59,18 +161,31 @@ async def simulate_agent_execution(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Executes a real end-to-end AI Agent workflow (Loan Approval / KYC Verification)
+    Executes a production AI Agent workflow (Loan Approval / KYC Verification)
     instrumented with the PS-7.1 Decision Path Auditor wrapper.
     
-    Demonstrates:
-    - Pre-storage PII Redaction (PAN, Aadhaar, Email, Phone, Names)
-    - Full Trajectory Logging (User Input -> RAG Context -> Tool Calls -> Reasoning -> Output)
-    - Persistent DB recording
+    Evaluates real underwriting policy rules against extracted dynamic user parameters.
     """
     session_id = request.session_id or f"sess-{uuid.uuid4().hex[:12]}"
     agent_name = "LoanApprovalAgent" if request.agent_type == "loan_approval" else "KYCVerificationAgent"
 
-    # 1. Instantiate Wrapper
+    # 1. Parse Dynamic Financial Input
+    financials = extract_financial_details(
+        prompt=request.prompt,
+        req_credit=request.credit_score,
+        req_income=request.annual_income,
+        req_emp=request.employment_type,
+        req_amount=request.loan_amount
+    )
+
+    credit_score = financials["credit_score"]
+    annual_income = financials["annual_income"]
+    employment_type = financials["employment_type"]
+    loan_amount = financials["loan_amount"]
+    pan_card = financials["pan_card"]
+    account_no = financials["account_no"]
+
+    # 2. Instantiate Wrapper
     wrapper = InstrumentedAgentWrapper(
         db_session=db,
         session_id=session_id,
@@ -79,23 +194,26 @@ async def simulate_agent_execution(
     )
     await wrapper.initialize_session(metadata={"source": "api_simulator", "agent_type": request.agent_type})
 
-    # 2. Log Step 1: User Input
+    # 3. Log Step 1: User Input
     await wrapper.log_user_input(request.prompt)
 
-    # 3. Log Step 2: RAG Context Retrieval
+    # 4. Log Step 2: RAG Context Retrieval
     rag_context = (
-        "Underwriting Policy v4.2: Applicants with CIBIL score > 750 eligible for instant pre-approval up to ₹5,00,000. "
-        "KYC documents required: PAN Card, Aadhaar Card, and 6 months bank statement."
+        "Underwriting Policy v4.2 Rules: "
+        "1. Minimum CIBIL score: 700. "
+        "2. Minimum Annual Income: ₹6,00,000. "
+        "3. Employment Eligibility: Salaried or Self-Employed (Contract Employee ineligible). "
+        "4. Max Loan Limit: 5x Annual Income."
     )
     await wrapper.log_retrieved_context(rag_context)
 
-    # 4. Log Step 3: Intermediate Reasoning
+    # 5. Log Step 3: Intermediate Reasoning
     await wrapper.log_reasoning(
-        "Parsing user prompt for identity & financial details. Extracting PAN card and account details to run CIBIL check."
+        f"Parsing user request for financial parameters. Extracted: Credit Score={credit_score}, "
+        f"Annual Income=₹{annual_income:,.2f}, Employment='{employment_type}', Requested Loan=₹{loan_amount:,.2f}."
     )
 
     if request.simulate_error:
-        # Simulate error flow for audit testing
         try:
             raise ValueError("Simulated Core Banking API Timeout (HTTP 504 Gateway Timeout)")
         except Exception as err:
@@ -114,28 +232,43 @@ async def simulate_agent_execution(
             reconstructed_timeline_url=f"/api/v1/audit/sessions/{session_id}/timeline"
         )
 
-    # 5. Step 4 & 5: Tool Invocations
-    # Tool 1: Credit Score
-    credit_res = await verify_credit_score_tool(wrapper, user_id=request.user_id, pan_card="ABCDE1234F")
+    # 6. Tool Calls with Real Extracted Data
+    # Tool 1: Credit Score Lookup
+    credit_res = await verify_credit_score_tool(wrapper, user_id=request.user_id, pan_card=pan_card, credit_score=credit_score)
     
-    # Tool 2: Account Balance
-    balance_res = await check_account_balance_tool(wrapper, account_no="ACCT-9876543210")
+    # Tool 2: Account Balance Verification
+    balance_res = await check_account_balance_tool(wrapper, account_no=account_no, annual_income=annual_income)
 
-    # Log Reasoning before underwriting
+    # Intermediate Reasoning before Underwriting
+    status_str = "Eligible score" if credit_res["is_score_eligible"] else "Ineligible score (<700)"
     await wrapper.log_reasoning(
-        f"CIBIL score is {credit_res['credit_score']} (EXCELLENT). Monthly average balance is ₹{balance_res['monthly_avg_balance_inr']}. Proceeding to underwriting evaluation."
+        f"CIBIL score verified as {credit_score} ({credit_res['credit_tier']} - {status_str}). "
+        f"Monthly avg balance estimated at ₹{balance_res['monthly_avg_balance_inr']:,.2f}. "
+        f"Employment: '{employment_type}'. Proceeding to Policy Underwriting Engine."
     )
 
-    # Tool 3: Underwriting
+    # Tool 3: Underwriting Decision Engine Evaluation
     underwrite_res = await evaluate_loan_underwriting_tool(
-        wrapper, loan_amount=300000.0, credit_score=credit_res["credit_score"], avg_balance=balance_res["monthly_avg_balance_inr"]
+        wrapper,
+        credit_score=credit_score,
+        annual_income=annual_income,
+        employment_type=employment_type,
+        loan_amount=loan_amount
     )
 
-    # 6. Step 6: Final Output
-    final_text = (
-        f"Dear Customer, your loan application for ₹3,00,000 has been APPROVED at an interest rate of 8.5% p.a. "
-        f"Reference Session ID: {session_id}."
-    )
+    # 7. Final Output Formulation
+    if underwrite_res["approved"]:
+        final_text = (
+            f"Dear Customer, your loan application for ₹{loan_amount:,.2f} has been APPROVED at an interest rate of 8.5% p.a. "
+            f"Reference Session ID: {session_id}."
+        )
+    else:
+        reasons_formatted = "; ".join(underwrite_res["rejection_reasons"])
+        final_text = (
+            f"Dear Customer, your loan application for ₹{loan_amount:,.2f} has been REJECTED based on Underwriting Policy criteria. "
+            f"Reason(s): {reasons_formatted}. Reference Session ID: {session_id}."
+        )
+
     await wrapper.log_final_output(final_text)
 
     return AgentSimulationResponse(

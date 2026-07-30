@@ -123,6 +123,18 @@ class PIIRedactor:
                 redacted_text, count = pattern.subn("[NAME_REDACTED]", redacted_text)
                 redaction_count += count
 
+        # Step 4: Map Presidio default tags (<PAN_CARD>, <EMAIL_ADDRESS>, etc.) to standard audit format
+        tag_mappings = {
+            "<PAN_CARD>": "[PAN_REDACTED]",
+            "<AADHAAR_CARD>": "[AADHAAR_REDACTED]",
+            "<EMAIL_ADDRESS>": "[EMAIL_REDACTED]",
+            "<PHONE_NUMBER>": "[PHONE_REDACTED]",
+            "<PERSON>": "[NAME_REDACTED]",
+            "<ACCOUNT_NUMBER>": "[ACCOUNT_REDACTED]"
+        }
+        for presidio_tag, target_tag in tag_mappings.items():
+            redacted_text = redacted_text.replace(presidio_tag, target_tag)
+
         return redacted_text, redaction_count
 
     def redact_json(self, data: Union[Dict[str, Any], List[Any], str, int, float, None]) -> tuple[Any, int]:

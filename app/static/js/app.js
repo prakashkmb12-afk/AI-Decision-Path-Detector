@@ -49,13 +49,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Prefill Sample Request with PII
-  btnPrefillLoan.addEventListener('click', () => {
+  const btnPrefillApproved = document.getElementById('btn-prefill-approved');
+  const btnPrefillRejected = document.getElementById('btn-prefill-rejected');
+
+  // Prefill Sample Approved Request (Credit Score: 780, Income: ₹12,00,000, Salaried, Amount: ₹5,00,000)
+  btnPrefillApproved.addEventListener('click', () => {
     promptInput.value = 
       "Evaluate loan approval for applicant Ramesh Kumar. " +
-      "Email: ramesh.kumar@gmail.com, Phone: +91 9876543210. " +
-      "PAN Card: ABCDE1234F, Aadhaar Number: 9999-8888-7777. " +
-      "Bank Account: 5432109876543. Loan Amount requested: ₹3,00,000.";
+      "Credit Score: 780. Annual Income: ₹12,00,000. Employment: Salaried. Loan Amount: ₹5,00,000. " +
+      "Email: ramesh.kumar@gmail.com, Phone: +91 9876543210. PAN: ABCDE1234F, Aadhaar: 9999-8888-7777.";
+  });
+
+  // Prefill Sample Rejected Request (Credit Score: 598, Income: ₹3,20,000, Contract Employee, Amount: ₹30,00,000)
+  btnPrefillRejected.addEventListener('click', () => {
+    promptInput.value = 
+      "Evaluate loan approval for applicant Ramesh Kumar. " +
+      "Credit Score: 598. Annual Income: ₹3,20,000. Employment: Contract Employee. Loan Amount: ₹30,00,000. " +
+      "Email: ramesh.kumar@gmail.com, Phone: +91 9876543210. PAN: ABCDE1234F, Aadhaar: 9999-8888-7777.";
   });
 
   // Run Simulation
@@ -219,5 +229,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial calls
   checkHealth();
   loadSessions();
-  btnPrefillLoan.click();
+  btnPrefillApproved.click();
 });
