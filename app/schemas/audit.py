@@ -1,6 +1,7 @@
+import uuid
 from datetime import datetime
-from typing import Optional, List, Any, Dict
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional, List, Any, Dict, Union
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class AuditEventBase(BaseModel):
@@ -22,9 +23,13 @@ class AuditEventCreate(AuditEventBase):
 
 
 class AuditEventSchema(AuditEventBase):
-    id: str
+    id: Union[str, uuid.UUID]
     session_id: str
     created_at: datetime
+
+    @field_serializer('id')
+    def serialize_id(self, v: Union[str, uuid.UUID], _info) -> str:
+        return str(v)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -42,11 +47,15 @@ class AuditSessionCreate(AuditSessionBase):
 
 
 class AuditSessionSchema(AuditSessionBase):
-    id: str
+    id: Union[str, uuid.UUID]
     started_at: datetime
     ended_at: Optional[datetime] = None
     summary: Optional[str] = None
     event_count: Optional[int] = 0
+
+    @field_serializer('id')
+    def serialize_id(self, v: Union[str, uuid.UUID], _info) -> str:
+        return str(v)
 
     model_config = ConfigDict(from_attributes=True)
 
