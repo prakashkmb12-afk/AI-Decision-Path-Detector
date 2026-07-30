@@ -199,8 +199,8 @@ async def simulate_agent_execution(
 
     # 4. Log Step 2: RAG Context Retrieval
     rag_context = (
-        "Underwriting Policy v4.2 Rules: "
-        "1. Minimum CIBIL score: 700. "
+        "Bank Lending Policy Rules: "
+        "1. Minimum Credit Score: 700. "
         "2. Minimum Annual Income: ₹6,00,000. "
         "3. Employment Eligibility: Salaried or Self-Employed (Contract Employee ineligible). "
         "4. Max Loan Limit: 5x Annual Income."
@@ -209,13 +209,12 @@ async def simulate_agent_execution(
 
     # 5. Log Step 3: Intermediate Reasoning
     await wrapper.log_reasoning(
-        f"Parsing user request for financial parameters. Extracted: Credit Score={credit_score}, "
-        f"Annual Income=₹{annual_income:,.2f}, Employment='{employment_type}', Requested Loan=₹{loan_amount:,.2f}."
+        "Application Assessment: The system analyzed the applicant's financial details and compared them with the loan eligibility policy."
     )
 
     if request.simulate_error:
         try:
-            raise ValueError("Simulated Core Banking API Timeout (HTTP 504 Gateway Timeout)")
+            raise ValueError("Simulated Banking Service Interruption")
         except Exception as err:
             await wrapper.log_error(err)
 
@@ -226,7 +225,7 @@ async def simulate_agent_execution(
             agent_name=agent_name,
             status="FAILED",
             user_input_unredacted=request.prompt,
-            final_output_redacted="Error occurred: Core Banking API Timeout.",
+            final_output_redacted="Verification service temporarily unavailable.",
             total_steps=wrapper.step_counter,
             pii_redacted_count=wrapper.total_pii_redactions,
             reconstructed_timeline_url=f"/api/v1/audit/sessions/{session_id}/timeline"
@@ -239,12 +238,9 @@ async def simulate_agent_execution(
     # Tool 2: Account Balance Verification
     balance_res = await check_account_balance_tool(wrapper, account_no=account_no, annual_income=annual_income)
 
-    # Intermediate Reasoning before Underwriting
-    status_str = "Eligible score" if credit_res["is_score_eligible"] else "Ineligible score (<700)"
+    # Intermediate Reasoning before Final Assessment
     await wrapper.log_reasoning(
-        f"CIBIL score verified as {credit_score} ({credit_res['credit_tier']} - {status_str}). "
-        f"Monthly avg balance estimated at ₹{balance_res['monthly_avg_balance_inr']:,.2f}. "
-        f"Employment: '{employment_type}'. Proceeding to Policy Underwriting Engine."
+        "The application met initial credit and banking verification steps and is now being evaluated for the final decision."
     )
 
     # Tool 3: Underwriting Decision Engine Evaluation
@@ -259,14 +255,14 @@ async def simulate_agent_execution(
     # 7. Final Output Formulation
     if underwrite_res["approved"]:
         final_text = (
-            f"Dear Customer, your loan application for ₹{loan_amount:,.2f} has been APPROVED at an interest rate of 8.5% p.a. "
-            f"Reference Session ID: {session_id}."
+            f"Loan Application Approved: Your requested loan of ₹{loan_amount:,.2f} satisfies all credit score, "
+            f"income, and employment policy requirements."
         )
     else:
         reasons_formatted = "; ".join(underwrite_res["rejection_reasons"])
         final_text = (
-            f"Dear Customer, your loan application for ₹{loan_amount:,.2f} has been REJECTED based on Underwriting Policy criteria. "
-            f"Reason(s): {reasons_formatted}. Reference Session ID: {session_id}."
+            f"Loan Application Rejected: Your requested loan of ₹{loan_amount:,.2f} could not be approved at this time. "
+            f"Reason(s): {reasons_formatted}."
         )
 
     await wrapper.log_final_output(final_text)

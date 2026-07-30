@@ -28,7 +28,8 @@ class PIIRedactor:
 
     # High-precision Regex Patterns
     REGEX_PATTERNS = {
-        "PAN": r"\b[A-Z]{5}[0-9]{4}[A-Z]{1}\b",
+        "PAN": r"\b[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}\b|\b[A-Za-z]{2,5}[0-9]{3,5}[A-Za-z]{1,2}\b",
+        "PAN_LABEL": r"(?i)PAN:\s*([A-Za-z0-9]+)",
         "AADHAAR": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
         "EMAIL": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
         "PHONE": r"\b(?:\+91[\-\s]?)?[6-9]\d{9}\b|\b(?:\+?\d{1,3}[\-\s]?)?\(?\d{3}\)?[\-\s]?\d{3}[\-\s]?\d{4}\b",
@@ -38,7 +39,7 @@ class PIIRedactor:
     # Common Indian / Global test names for fallback keyword matching if spaCy NLP model is unavailable
     NAME_KEYWORDS = [
         "Ramesh Kumar", "Suresh Patel", "Anita Sharma", "Priya Singh", "Rahul Verma",
-        "Vijay Mallya", "John Doe", "Jane Smith", "Alice Johnson", "Bob Smith"
+        "Ravi Kumar", "Vijay Mallya", "John Doe", "Jane Smith", "Alice Johnson", "Bob Smith"
     ]
 
     def __init__(self):
@@ -96,7 +97,10 @@ class PIIRedactor:
                 logger.debug(f"Presidio analyze pass skipped: {str(e)}")
 
         # Step 2: Deterministic Regex Pass (Guarantees zero-leakage for PAN, Aadhaar, Email, Phone, Card)
-        # PAN Card
+        # PAN Card (explicit label pass + pattern pass)
+        redacted_text, count = re.subn(self.REGEX_PATTERNS["PAN_LABEL"], "PAN: [PAN_REDACTED]", redacted_text)
+        redaction_count += count
+
         redacted_text, count = re.subn(self.REGEX_PATTERNS["PAN"], "[PAN_REDACTED]", redacted_text)
         redaction_count += count
 
@@ -130,10 +134,15 @@ class PIIRedactor:
             "<EMAIL_ADDRESS>": "[EMAIL_REDACTED]",
             "<PHONE_NUMBER>": "[PHONE_REDACTED]",
             "<PERSON>": "[NAME_REDACTED]",
-            "<ACCOUNT_NUMBER>": "[ACCOUNT_REDACTED]"
+            "<ACCOUNT_NUMBER>": "[ACCOUNT_REDACTED]",
+            "<US_BANK_NUMBER>": "[ACCOUNT_REDACTED]"
         }
         for presidio_tag, target_tag in tag_mappings.items():
             redacted_text = redacted_text.replace(presidio_tag, target_tag)
+
+        # Step 5: Clean up any leaking Presidio entity tags like <US_DRIVER_LICENSE>, <DATE_TIME>, etc.
+        redacted_text = re.sub(r"<(US_DRIVER_LICENSE|DATE_TIME|DATE|TIME|LOCATION|ORGANIZATION|NRP|IP_ADDRESS|URL)>", "", redacted_text)
+        redacted_text = re.sub(r"\s+", " ", redacted_text).strip()
 
         return redacted_text, redaction_count
 

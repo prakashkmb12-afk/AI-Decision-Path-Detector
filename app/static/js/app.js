@@ -346,20 +346,20 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           `;
         } else if (step.event_type === 'CONTEXT_RETRIEVAL') {
-          stepTitle = 'Underwriting Policy Rule Retrieval';
+          stepTitle = 'Lending Policy Rules Retrieval';
           bodyHtml = `
             <div>
-              <span class="kv-label">Active Policy Rules Applied</span>
+              <span class="kv-label">Bank Policy Rules</span>
               <div class="kv-value" style="background: var(--bg-dark); padding: 0.6rem 0.8rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.82rem; margin-top: 0.2rem; color: var(--text-secondary);">
                 ${escapeHtml(step.retrieved_context)}
               </div>
             </div>
           `;
         } else if (step.event_type === 'REASONING') {
-          stepTitle = 'Audit Policy Finding';
+          stepTitle = 'Application Assessment';
           bodyHtml = `
             <div>
-              <span class="kv-label">Policy Trace Finding</span>
+              <span class="kv-label">Assessment Summary</span>
               <div class="kv-value" style="color: var(--status-warning-text); background: var(--status-warning-bg); padding: 0.6rem 0.8rem; border-radius: 4px; border-left: 3px solid var(--status-warning-text); margin-top: 0.2rem;">
                 ${escapeHtml(step.intermediate_reasoning)}
               </div>
@@ -374,10 +374,9 @@ document.addEventListener('DOMContentLoaded', () => {
             stepTitle = 'Credit Score Verification';
             bodyHtml = `
               <div class="kv-grid">
-                <div class="kv-group"><span class="kv-label">Applicant Credit Score</span><span class="kv-value" style="font-weight: 700;">${tResp.credit_score || tParams.credit_score || '-'}</span></div>
-                <div class="kv-group"><span class="kv-label">Bureau Rating Tier</span><span class="kv-value">${tResp.credit_tier || '-'}</span></div>
-                <div class="kv-group"><span class="kv-label">Required Minimum Score</span><span class="kv-value">700</span></div>
-                <div class="kv-group"><span class="kv-label">Verification Status</span><span class="kv-value ${tResp.is_score_eligible ? 'status-pass' : 'status-fail'}">${tResp.is_score_eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}</span></div>
+                <div class="kv-group"><span class="kv-label">Credit Score</span><span class="kv-value" style="font-weight: 700;">${tResp.credit_score || tParams.credit_score || '-'}</span></div>
+                <div class="kv-group"><span class="kv-label">Minimum Required</span><span class="kv-value">700</span></div>
+                <div class="kv-group"><span class="kv-label">Verification Result</span><span class="kv-value ${tResp.is_score_eligible ? 'status-pass' : 'status-fail'}">${tResp.is_score_eligible ? 'Eligible' : 'Not Eligible'}</span></div>
               </div>
             `;
           } else if (tName === 'check_account_balance') {
@@ -385,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bodyHtml = `
               <div class="kv-grid">
                 <div class="kv-group"><span class="kv-label">Account Status</span><span class="kv-value status-pass">${tResp.account_status || 'ACTIVE'}</span></div>
-                <div class="kv-group"><span class="kv-label">Estimated Monthly Average Balance</span><span class="kv-value">₹${Number(tResp.monthly_avg_balance_inr || 0).toLocaleString('en-IN')}</span></div>
+                <div class="kv-group"><span class="kv-label">Estimated Monthly Balance</span><span class="kv-value">₹${Number(tResp.monthly_avg_balance_inr || 0).toLocaleString('en-IN')}</span></div>
               </div>
             `;
           } else if (tName === 'evaluate_loan_underwriting') {
@@ -394,11 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
             bodyHtml = `
               <div class="kv-grid" style="margin-bottom: 0.75rem;">
                 <div class="kv-group"><span class="kv-label">Requested Loan Amount</span><span class="kv-value">₹${Number(tParams.loan_amount || 0).toLocaleString('en-IN')}</span></div>
-                <div class="kv-group"><span class="kv-label">Assessment Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'ELIGIBLE (APPROVED)' : 'NOT ELIGIBLE (REJECTED)'}</span></div>
+                <div class="kv-group"><span class="kv-label">Assessment Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'Eligible (Approved)' : 'Not Eligible (Rejected)'}</span></div>
               </div>
               ${!isApp && tResp.rejection_reasons ? `
                 <div class="kv-group">
-                  <span class="kv-label">Policy Reason</span>
+                  <span class="kv-label">Reason</span>
                   <div class="kv-value status-fail" style="background: var(--status-danger-bg); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--status-danger-border); font-size: 0.82rem; margin-top: 0.25rem;">
                     ${(tResp.rejection_reasons || []).join('; ')}
                   </div>
@@ -411,10 +410,10 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
         } else if (step.event_type === 'FINAL_OUTPUT') {
-          stepTitle = 'Decision Determination';
+          stepTitle = 'Final Decision';
           bodyHtml = `
             <div>
-              <span class="kv-label">Formal Application Decision Result</span>
+              <span class="kv-label">Final Decision Determination</span>
               <div class="kv-value" style="background: var(--bg-surface-elevated); padding: 0.75rem; border-radius: 4px; border-left: 4px solid var(--accent-blue); font-weight: 500; margin-top: 0.2rem;">
                 ${escapeHtml(step.final_output)}
               </div>
@@ -535,14 +534,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Section 6: Formal Decision Narrative
-      setTxt('rep-narrative', isApproved
-        ? "Your application was carefully evaluated based on your identity, financial profile, employment details, and loan eligibility criteria. After verification, we found that all credit score, income, and employment parameters satisfy our lending policy. Your loan request has been approved."
-        : "Your application was carefully evaluated based on your identity, financial profile, employment details, and loan eligibility criteria. After verification, we found that your credit score and annual income do not satisfy our minimum lending policy requirements. For this reason, your loan request could not be approved at this time.");
+      const narrativeElem = getEl('rep-narrative');
+      if (narrativeElem) {
+        narrativeElem.innerHTML = escapeHtml(summaryData.plain_english_summary).replace(/\n/g, '<br>');
+      }
 
       // Section 7: Recommended Next Step
       setTxt('rep-next-steps', isApproved
         ? "Proceed to document verification and loan agreement execution with your designated loan officer."
-        : "You may improve your credit score above 700 or provide additional financial documentation before applying again.");
+        : "You may apply again after updating your employment status, improving your credit score above 700, or contacting the bank for manual review.");
 
     } catch (err) {
       console.error('Report modal generation error:', err);

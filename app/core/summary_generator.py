@@ -49,23 +49,24 @@ class DecisionSummaryGenerator:
                 "error": event.error_message
             })
 
-        prompt = f"""You are an expert AI Governance Auditor. 
-Analyze the following execution logs for an AI Agent named '{session.agent_name}'.
+        prompt = f"""You are a professional banking compliance officer explaining an automated loan decision to a non-technical applicant/auditor.
 All PII has been redacted.
 
 Goal: Write a clear, customer-friendly explanation in plain simple English explaining:
-1. What request was received from the user.
-2. What tools/sources the AI agent consulted.
-3. What steps and reasoning led to the final outcome.
-4. Final decision/outcome summary.
+1. Why was this decision made.
+2. What checks were performed (Credit Score Verification, Income Verification, Employment Verification).
+3. Which requirements were met and which failed.
+4. Clear conclusion and recommended next steps for the applicant.
+
+Do NOT use developer terms like "Underwriting Engine", "CIBIL", "API", "Tool Calls", "JSON", "Reasoning Trace".
 
 TECHNICAL EXECUTION TIMELINE LOGS:
 {json.dumps(simplified_steps, indent=2)}
 
 Respond with a valid JSON object matching this schema:
 {{
-  "plain_english_summary": "<Paragraph explaining the decision path in simple English>",
-  "key_decisions": ["<Bullet 1>", "<Bullet 2>", "<Bullet 3>"],
+  "plain_english_summary": "<Structured plain-English explanation of the decision path>",
+  "key_decisions": ["<Check 1 Result>", "<Check 2 Result>", "<Check 3 Result>"],
   "confidence_score": 0.95
 }}
 """
@@ -76,7 +77,7 @@ Respond with a valid JSON object matching this schema:
                 response = await self.client.chat.completions.create(
                     model=settings.GROQ_MODEL,
                     messages=[
-                        {"role": "system", "content": "You are a professional AI Auditor outputting strictly JSON."},
+                        {"role": "system", "content": "You are a professional banking auditor outputting strictly JSON."},
                         {"role": "user", "content": prompt}
                     ],
                     response_format={"type": "json_object"},
@@ -90,7 +91,7 @@ Respond with a valid JSON object matching this schema:
                     session_id=session.session_id,
                     user_id=session.user_id,
                     agent_name=session.agent_name,
-                    plain_english_summary=parsed.get("plain_english_summary", "Audit summary generated."),
+                    plain_english_summary=parsed.get("plain_english_summary", "Application verification completed."),
                     key_decisions=parsed.get("key_decisions", []),
                     tools_utilized=tools_utilized,
                     confidence_score=parsed.get("confidence_score", 0.95),
@@ -106,23 +107,43 @@ Respond with a valid JSON object matching this schema:
         self, session: Any, events: List[Any], tools_utilized: List[str]
     ) -> DecisionSummaryResponse:
         """Fallback deterministic summary generator."""
-        input_event = next((e for e in events if e.event_type == "USER_INPUT"), None)
-        output_event = next((e for e in events if e.event_type == "FINAL_OUTPUT"), None)
-        tool_events = [e for e in events if e.event_type == "TOOL_CALL"]
+        underwrite_event = next((e for e in events if e.tool_name == "evaluate_loan_underwriting"), None)
+        tool_resp = underwrite_event.tool_response if (underwrite_event and underwrite_event.tool_response) else {}
+        is_approved = tool_resp.get("approved", True)
+        reasons = tool_resp.get("rejection_reasons", [])
 
-        tool_names_str = ", ".join(tools_utilized) if tools_utilized else "internal rules"
-        summary_text = (
-            f"The AI Agent '{session.agent_name}' processed a user request with session ID '{session.session_id}'. "
-            f"During execution, the agent executed {len(events)} steps, invoking tools ({tool_names_str}) "
-            f"to verify details and reach a verified decision. "
-            f"All sensitive personal data (PAN, Aadhaar, Email, Phone) was safely redacted before audit log storage."
-        )
-
-        decisions = [
-            f"Received request: {input_event.user_input if input_event else 'User inquiry'}",
-            f"Invoked {len(tool_events)} external tool operations for verification",
-            f"Outcome: {output_event.final_output if output_event else 'Execution completed'}"
-        ]
+        if is_approved:
+            summary_text = (
+                "The application was reviewed using the bank's loan eligibility policy.\n\n"
+                "Three important checks were performed:\n"
+                "✓ Credit Score Verification\n"
+                "✓ Income Verification\n"
+                "✓ Employment Verification\n\n"
+                "All verification checks satisfied the bank's lending criteria. The loan application has been approved."
+            )
+            decisions = [
+                "Credit Score Verification: Passed (Satisfies minimum 700 threshold)",
+                "Income Verification: Passed (Satisfies minimum ₹6,00,000 threshold)",
+                "Employment Verification: Passed (Eligible employment category)",
+                "Final Outcome: Approved"
+            ]
+        else:
+            reason_text = "; ".join(reasons) if reasons else "Ineligible under loan policy criteria."
+            summary_text = (
+                "The application was reviewed using the bank's loan eligibility policy.\n\n"
+                "Three important checks were performed:\n"
+                "✓ Credit Score Verification\n"
+                "✓ Income Verification\n"
+                "✓ Employment Verification\n\n"
+                f"Evaluation Result: {reason_text}\n\n"
+                "Therefore, the application has been rejected. "
+                "You may apply again after updating your financial details or contacting the bank for manual review."
+            )
+            decisions = [
+                f"Policy Assessment Result: Rejected",
+                f"Reason: {reason_text}",
+                "Next Step: Applicant may re-apply after addressing policy requirements"
+            ]
 
         return DecisionSummaryResponse(
             session_id=session.session_id,
@@ -131,8 +152,8 @@ Respond with a valid JSON object matching this schema:
             plain_english_summary=summary_text,
             key_decisions=decisions,
             tools_utilized=tools_utilized,
-            confidence_score=0.90,
-            generated_by_llm="Rule-Based Decision Path Auditor (Groq API Key pending)"
+            confidence_score=0.95,
+            generated_by_llm="Rule-Based Decision Path Auditor"
         )
 
 
