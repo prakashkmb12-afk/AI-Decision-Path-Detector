@@ -7,7 +7,7 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-The **Enterprise AI Decision Path Auditor** is a lightweight, non-intrusive AI Governance platform designed to audit, reconstruct, and explain consequential decisions made by autonomous AI agents. Built as an enterprise solution for **PS-7.1 – The Decision Path Auditor**, the platform captures prompt inputs, context retrieval events, intermediate reasoning steps, tool calls, parameter inputs, tool responses, and final outcomes. It enforces automated PII redaction and provides immutable decision timelines and plain-English audit reports for compliance teams, auditors, regulators, and business stakeholders.
+The **Enterprise AI Decision Path Auditor** is a lightweight, non-intrusive AI Governance platform designed to audit, reconstruct, and explain consequential decisions made by autonomous AI agents. Built as an enterprise solution for **The Decision Path Auditor**, the platform captures prompt inputs, context retrieval events, intermediate reasoning steps, tool calls, parameter inputs, tool responses, and final outcomes. It enforces automated PII redaction and provides immutable decision timelines and plain-English audit reports for compliance teams, auditors, regulators, and business stakeholders.
 
 ---
 
