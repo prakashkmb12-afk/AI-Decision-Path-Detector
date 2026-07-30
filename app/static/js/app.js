@@ -2,11 +2,51 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSessionId = null;
   let allSessionsCache = [];
 
-  // Theme Controls
-  const themeDarkBtn = document.getElementById('theme-dark');
-  const themeLightBtn = document.getElementById('theme-light');
-  const themeSystemBtn = document.getElementById('theme-system');
+  // Safe DOM Helpers to eliminate null reference crashes
+  function getEl(id) {
+    return document.getElementById(id);
+  }
 
+  function getVal(id, fallback = '') {
+    const el = getEl(id);
+    return el && el.value !== undefined ? el.value.trim() : fallback;
+  }
+
+  function getBool(id, fallback = false) {
+    const el = getEl(id);
+    return el && el.checked !== undefined ? !!el.checked : fallback;
+  }
+
+  function onEvent(id, event, callback) {
+    const el = getEl(id);
+    if (el) {
+      el.addEventListener(event, callback);
+    }
+  }
+
+  // Enterprise Toast Notification Function (Replaces browser alert popups)
+  function showToast(title, message, type = 'error') {
+    const container = getEl('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast-message toast-${type}`;
+    toast.innerHTML = `
+      <div class="toast-title">${escapeHtml(title)}</div>
+      <div class="toast-body">${escapeHtml(message)}</div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 5000);
+  }
+
+  // Theme Controls
   function applyTheme(theme) {
     let activeTheme = theme;
     if (theme === 'system') {
@@ -15,111 +55,129 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.setAttribute('data-theme', activeTheme);
     localStorage.setItem('app-theme', theme);
 
-    themeDarkBtn.classList.toggle('active', theme === 'dark');
-    themeLightBtn.classList.toggle('active', theme === 'light');
-    themeSystemBtn.classList.toggle('active', theme === 'system');
+    const darkBtn = getEl('theme-dark');
+    const lightBtn = getEl('theme-light');
+    const sysBtn = getEl('theme-system');
+
+    if (darkBtn) darkBtn.classList.toggle('active', theme === 'dark');
+    if (lightBtn) lightBtn.classList.toggle('active', theme === 'light');
+    if (sysBtn) sysBtn.classList.toggle('active', theme === 'system');
   }
 
   const savedTheme = localStorage.getItem('app-theme') || 'dark';
   applyTheme(savedTheme);
 
-  themeDarkBtn.addEventListener('click', () => applyTheme('dark'));
-  themeLightBtn.addEventListener('click', () => applyTheme('light'));
-  themeSystemBtn.addEventListener('click', () => applyTheme('system'));
+  onEvent('theme-dark', 'click', () => applyTheme('dark'));
+  onEvent('theme-light', 'click', () => applyTheme('light'));
+  onEvent('theme-system', 'click', () => applyTheme('system'));
 
-  // Form Elements
-  const formAppName = document.getElementById('form-app-name');
-  const formAppEmail = document.getElementById('form-app-email');
-  const formAppPhone = document.getElementById('form-app-phone');
-  const formAppPan = document.getElementById('form-app-pan');
-  const formAppAadhaar = document.getElementById('form-app-aadhaar');
-  const formAppAccount = document.getElementById('form-app-account');
-  const formAppLoan = document.getElementById('form-app-loan');
-  const formAppIncome = document.getElementById('form-app-income');
-  const formAppEmployment = document.getElementById('form-app-employment');
-  const formAppScore = document.getElementById('form-app-score');
-  const formAppPurpose = document.getElementById('form-app-purpose');
-  
-  const btnSubmitApp = document.getElementById('btn-submit-app');
-  const btnClearForm = document.getElementById('btn-clear-form');
-  const btnNewApp = document.getElementById('btn-new-app');
-  const simulateErrorCheck = document.getElementById('simulate-error-check');
-
-  // Header & Right Panel Explorer Elements
-  const sysDbStatus = document.getElementById('sys-db-status');
-  const explorerEmptyState = document.getElementById('explorer-empty-state');
-  const explorerDataSection = document.getElementById('explorer-data-section');
-
-  const sessionTableBody = document.getElementById('session-table-body');
-  const btnRefreshSessions = document.getElementById('btn-refresh-sessions');
-  const filterSearch = document.getElementById('filter-search');
-  const filterWorkflow = document.getElementById('filter-workflow');
-  const filterStatus = document.getElementById('filter-status');
-
-  // Timeline & Modal Elements
-  const timelineSection = document.getElementById('timeline-section');
-  const activeSessionIdSpan = document.getElementById('active-session-id');
-  const timelineContainer = document.getElementById('timeline-container');
-  const btnGenerateSummary = document.getElementById('btn-generate-summary');
-  const summaryModal = document.getElementById('summary-modal');
-  const btnCloseModal = document.getElementById('btn-close-modal');
-
-  // Check Health
+  // Check Health Probe
   async function checkHealth() {
     try {
       const res = await fetch('/health');
       const data = await res.json();
-      sysDbStatus.textContent = data.database === 'healthy' ? 'Audit Ledger: Active' : 'Audit Ledger: Offline';
+      const sysDbStatus = getEl('sys-db-status');
+      if (sysDbStatus) {
+        sysDbStatus.textContent = data.database === 'healthy' ? 'Audit Ledger: Active' : 'Audit Ledger: Offline';
+      }
     } catch (err) {
-      sysDbStatus.textContent = 'Audit Ledger: Error';
+      const sysDbStatus = getEl('sys-db-status');
+      if (sysDbStatus) sysDbStatus.textContent = 'Audit Ledger: Offline';
     }
   }
 
   // Clear Form Handler
   function resetApplicationForm() {
-    formAppName.value = '';
-    formAppEmail.value = '';
-    formAppPhone.value = '';
-    formAppPan.value = '';
-    formAppAadhaar.value = '';
-    formAppAccount.value = '';
-    formAppLoan.value = '';
-    formAppIncome.value = '';
-    formAppEmployment.value = '';
-    formAppScore.value = '';
-    formAppPurpose.value = 'Personal Loan';
+    const fields = [
+      'form-app-name', 'form-app-email', 'form-app-phone', 'form-app-pan',
+      'form-app-aadhaar', 'form-app-account', 'form-app-loan', 'form-app-income',
+      'form-app-employment', 'form-app-score'
+    ];
+    fields.forEach(id => {
+      const el = getEl(id);
+      if (el) el.value = '';
+    });
+
+    const purposeEl = getEl('form-app-purpose');
+    if (purposeEl) purposeEl.value = 'Personal Loan';
   }
 
-  btnClearForm.addEventListener('click', resetApplicationForm);
+  onEvent('btn-clear-form', 'click', resetApplicationForm);
 
-  btnNewApp.addEventListener('click', () => {
+  onEvent('btn-new-app', 'click', () => {
     resetApplicationForm();
-    timelineSection.style.display = 'none';
-    formAppName.focus();
+    const timelineSection = getEl('timeline-section');
+    if (timelineSection) timelineSection.style.display = 'none';
+    const nameEl = getEl('form-app-name');
+    if (nameEl) nameEl.focus();
   });
 
-  // Submit Application Action
-  btnSubmitApp.addEventListener('click', async () => {
-    const name = formAppName.value.trim() || 'Applicant';
-    const email = formAppEmail.value.trim() || 'applicant@example.com';
-    const phone = formAppPhone.value.trim() || '+91 9876543210';
-    const pan = formAppPan.value.trim() || 'ABCDE1234F';
-    const aadhaar = formAppAadhaar.value.trim() || '9999-8888-7777';
-    const account = formAppAccount.value.trim() || '5432109876543';
-    const loan = parseFloat(formAppLoan.value) || 500000;
-    const income = parseFloat(formAppIncome.value) || 1200000;
-    const employment = formAppEmployment.value || 'Salaried';
-    const score = parseInt(formAppScore.value, 10) || 750;
-    const purpose = formAppPurpose.value || 'Personal Loan';
+  // Submit Application Action with Validation & Safe Error Handling
+  onEvent('btn-submit-app', 'click', async () => {
+    const name = getVal('form-app-name');
+    const email = getVal('form-app-email');
+    const phone = getVal('form-app-phone');
+    const pan = getVal('form-app-pan');
+    const aadhaar = getVal('form-app-aadhaar');
+    const account = getVal('form-app-account');
+    const loanRaw = getVal('form-app-loan');
+    const incomeRaw = getVal('form-app-income');
+    const employment = getVal('form-app-employment');
+    const scoreRaw = getVal('form-app-score');
+    const purpose = getVal('form-app-purpose', 'Personal Loan');
+
+    const loan = parseFloat(loanRaw);
+    const income = parseFloat(incomeRaw);
+    const score = parseInt(scoreRaw, 10);
+
+    // Client-Side Validation
+    if (!name) {
+      showToast('Validation Error', 'Please enter the applicant full name before submitting.', 'warning');
+      const el = getEl('form-app-name');
+      if (el) el.focus();
+      return;
+    }
+
+    if (isNaN(loan) || loan <= 0) {
+      showToast('Validation Error', 'Please enter a valid requested loan amount greater than zero.', 'warning');
+      const el = getEl('form-app-loan');
+      if (el) el.focus();
+      return;
+    }
+
+    if (isNaN(income) || income <= 0) {
+      showToast('Validation Error', 'Please enter a valid annual income greater than zero.', 'warning');
+      const el = getEl('form-app-income');
+      if (el) el.focus();
+      return;
+    }
+
+    if (!employment) {
+      showToast('Validation Error', 'Please select an employment category.', 'warning');
+      const el = getEl('form-app-employment');
+      if (el) el.focus();
+      return;
+    }
+
+    if (isNaN(score) || score < 300 || score > 900) {
+      showToast('Validation Error', 'Please enter a valid Credit Score between 300 and 900.', 'warning');
+      const el = getEl('form-app-score');
+      if (el) el.focus();
+      return;
+    }
 
     // Construct Prompt Dynamically
     const promptText = 
       `Evaluate loan approval for applicant ${name}. ` +
       `Credit Score: ${score}. Annual Income: ${income}. Employment: ${employment}. Loan Amount: ${loan}. ` +
-      `Email: ${email}, Phone: ${phone}. PAN: ${pan}, Aadhaar: ${aadhaar}. Bank Account: ${account}. Purpose: ${purpose}.`;
+      `Email: ${email || 'ramesh@example.com'}, Phone: ${phone || '+91 9876543210'}. ` +
+      `PAN: ${pan || 'ABCDE1234F'}, Aadhaar: ${aadhaar || '9999-8888-7777'}. Bank Account: ${account || '5432109876543'}. Purpose: ${purpose}.`;
 
-    btnSubmitApp.disabled = true;
-    btnSubmitApp.textContent = 'Processing Verification...';
+    const btnSubmit = getEl('btn-submit-app');
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Processing Verification...';
+    }
 
     try {
       const payload = {
@@ -130,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         annual_income: income,
         employment_type: employment,
         loan_amount: loan,
-        simulate_error: simulateErrorCheck.checked
+        simulate_error: getBool('simulate-error-check', false) // Safe helper prevents null crash!
       };
 
       const res = await fetch('/api/v1/agent/simulate', {
@@ -139,22 +197,37 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify(payload)
       });
 
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
+
       const data = await res.json();
       currentSessionId = data.session_id;
 
       // Reveal Data Panels
-      explorerEmptyState.style.display = 'none';
-      explorerDataSection.style.display = 'block';
-      btnNewApp.style.display = 'inline-flex';
-      btnRefreshSessions.style.display = 'inline-flex';
+      const emptyState = getEl('explorer-empty-state');
+      const dataSection = getEl('explorer-data-section');
+      const btnNew = getEl('btn-new-app');
+      const btnRef = getEl('btn-refresh-sessions');
+
+      if (emptyState) emptyState.style.display = 'none';
+      if (dataSection) dataSection.style.display = 'block';
+      if (btnNew) btnNew.style.display = 'inline-flex';
+      if (btnRef) btnRef.style.display = 'inline-flex';
+
+      showToast('Verification Complete', 'Application processed and immutable audit record generated.', 'success');
 
       await loadSessions();
       await viewTimeline(data.session_id);
+
     } catch (err) {
-      alert('Error processing application verification: ' + err.message);
+      console.error('Application verification error:', err);
+      showToast('System Error', 'Application verification could not be completed. Please try again or contact system administration.', 'error');
     } finally {
-      btnSubmitApp.disabled = false;
-      btnSubmitApp.textContent = 'Submit Application';
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = 'Submit Application';
+      }
     }
   });
 
@@ -162,13 +235,19 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadSessions() {
     try {
       const res = await fetch('/api/v1/audit/sessions');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       allSessionsCache = await res.json();
 
       if (allSessionsCache.length > 0) {
-        explorerEmptyState.style.display = 'none';
-        explorerDataSection.style.display = 'block';
-        btnNewApp.style.display = 'inline-flex';
-        btnRefreshSessions.style.display = 'inline-flex';
+        const emptyState = getEl('explorer-empty-state');
+        const dataSection = getEl('explorer-data-section');
+        const btnNew = getEl('btn-new-app');
+        const btnRef = getEl('btn-refresh-sessions');
+
+        if (emptyState) emptyState.style.display = 'none';
+        if (dataSection) dataSection.style.display = 'block';
+        if (btnNew) btnNew.style.display = 'inline-flex';
+        if (btnRef) btnRef.style.display = 'inline-flex';
       }
 
       renderFilteredSessions();
@@ -179,9 +258,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Filter & Render Data Table
   function renderFilteredSessions() {
-    const query = filterSearch.value.trim().toLowerCase();
-    const wf = filterWorkflow.value;
-    const st = filterStatus.value;
+    const tableBody = getEl('session-table-body');
+    if (!tableBody) return;
+
+    const query = getVal('filter-search').toLowerCase();
+    const wf = getVal('filter-workflow');
+    const st = getVal('filter-status');
 
     const filtered = allSessionsCache.filter(s => {
       const matchSearch = !query || (s.session_id.toLowerCase().includes(query) || s.user_id.toLowerCase().includes(query));
@@ -191,11 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (filtered.length === 0) {
-      sessionTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No matching audit records found.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No matching audit records found.</td></tr>`;
       return;
     }
 
-    sessionTableBody.innerHTML = filtered.map(s => {
+    tableBody.innerHTML = filtered.map(s => {
       const statusBadge = s.status === 'COMPLETED' 
         ? `<span class="badge badge-approved">Completed</span>`
         : `<span class="badge badge-rejected">${s.status}</span>`;
@@ -224,19 +306,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  filterSearch.addEventListener('input', renderFilteredSessions);
-  filterWorkflow.addEventListener('change', renderFilteredSessions);
-  filterStatus.addEventListener('change', renderFilteredSessions);
-  btnRefreshSessions.addEventListener('click', loadSessions);
+  onEvent('filter-search', 'input', renderFilteredSessions);
+  onEvent('filter-workflow', 'change', renderFilteredSessions);
+  onEvent('filter-status', 'change', renderFilteredSessions);
+  onEvent('btn-refresh-sessions', 'click', loadSessions);
 
   // View Business Timeline
   async function viewTimeline(sessionId) {
     currentSessionId = sessionId;
-    activeSessionIdSpan.textContent = sessionId;
-    timelineSection.style.display = 'block';
+    const activeSpan = getEl('active-session-id');
+    if (activeSpan) activeSpan.textContent = sessionId;
+
+    const timelineSection = getEl('timeline-section');
+    if (timelineSection) timelineSection.style.display = 'block';
+
+    const timelineContainer = getEl('timeline-container');
+    if (!timelineContainer) return;
 
     try {
       const res = await fetch(`/api/v1/audit/sessions/${sessionId}/timeline`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       timelineContainer.innerHTML = data.timeline.map(step => {
@@ -244,10 +333,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let bodyHtml = '';
 
         if (step.event_type === 'USER_INPUT') {
-          stepTitle = 'Application Receipt & Data Sanitization';
+          stepTitle = 'Application Receipt & Data Protection';
           bodyHtml = `
             <div style="margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-              The loan application was received and passed through automated data sanitization before audit storage.
+              The loan application was received and passed through automated personal data protection before audit storage.
             </div>
             <div class="kv-group">
               <span class="kv-label">Secured Application Record</span>
@@ -356,20 +445,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
       timelineSection.scrollIntoView({ behavior: 'smooth' });
     } catch (err) {
-      alert('Error loading timeline: ' + err.message);
+      console.error('Timeline loading error:', err);
+      showToast('Error', 'Unable to retrieve timeline data.', 'error');
     }
   }
 
   // Open Report Modal
   async function openReportModal(sessionId) {
     currentSessionId = sessionId;
-    summaryModal.classList.add('active');
+    const summaryModal = getEl('summary-modal');
+    if (summaryModal) summaryModal.classList.add('active');
 
     try {
       const [tRes, sRes] = await Promise.all([
         fetch(`/api/v1/audit/sessions/${sessionId}/timeline`),
         fetch(`/api/v1/audit/sessions/${sessionId}/summary`, { method: 'POST' })
       ]);
+
+      if (!tRes.ok || !sRes.ok) throw new Error('API Report Error');
 
       const timelineData = await tRes.json();
       const summaryData = await sRes.json();
@@ -378,10 +471,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const events = timelineData.timeline;
 
       // Section 1: Metadata
-      document.getElementById('rep-session-id').textContent = session.session_id;
-      document.getElementById('rep-user-id').textContent = session.user_id;
-      document.getElementById('rep-workflow').textContent = session.agent_name === 'LoanApprovalAgent' ? 'Loan Underwriting Workflow' : 'KYC Verification Workflow';
-      document.getElementById('rep-status').textContent = session.status;
+      setTxt('rep-session-id', session.session_id);
+      setTxt('rep-user-id', session.user_id);
+      setTxt('rep-workflow', session.agent_name === 'LoanApprovalAgent' ? 'Loan Underwriting Workflow' : 'KYC Verification Workflow');
+      setTxt('rep-status', session.status);
 
       // Extract Underwriting Tool parameters & response
       const underwriteEvent = events.find(e => e.tool_name === 'evaluate_loan_underwriting');
@@ -397,23 +490,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const rejectionReasons = toolResp.rejection_reasons || [];
 
       // Section 2: Applicant Info (Protected)
-      document.getElementById('rep-app-income').textContent = `₹${Number(annualIncome).toLocaleString('en-IN')}`;
-      document.getElementById('rep-app-employment').textContent = empType;
-      document.getElementById('rep-app-loan').textContent = `₹${Number(loanAmt).toLocaleString('en-IN')}`;
-      document.getElementById('rep-app-score').textContent = creditScore;
+      setTxt('rep-app-income', `₹${Number(annualIncome).toLocaleString('en-IN')}`);
+      setTxt('rep-app-employment', empType);
+      setTxt('rep-app-loan', `₹${Number(loanAmt).toLocaleString('en-IN')}`);
+      setTxt('rep-app-score', creditScore);
 
       // Section 3: Decision Outcome
-      const badgeElem = document.getElementById('rep-decision-badge');
-      if (isApproved) {
-        badgeElem.innerHTML = `<span class="badge badge-approved">APPROVED</span>`;
-      } else {
-        badgeElem.innerHTML = `<span class="badge badge-rejected">REJECTED</span>`;
+      const badgeElem = getEl('rep-decision-badge');
+      if (badgeElem) {
+        badgeElem.innerHTML = isApproved 
+          ? `<span class="badge badge-approved">APPROVED</span>`
+          : `<span class="badge badge-rejected">REJECTED</span>`;
       }
 
-      document.getElementById('rep-confidence').textContent = `${(summaryData.confidence_score * 100).toFixed(1)}%`;
-      document.getElementById('rep-decision-reasons').textContent = isApproved
+      setTxt('rep-confidence', `${(summaryData.confidence_score * 100).toFixed(1)}%`);
+      setTxt('rep-decision-reasons', isApproved
         ? "The applicant satisfied all credit score, annual income, employment stability, and debt-to-income policy requirements."
-        : rejectionReasons.join("; ") || "Ineligible under lending policy criteria.";
+        : rejectionReasons.join("; ") || "Ineligible under lending policy criteria.");
 
       // Section 5: Policy Evaluation Matrix Table
       const maxLimit = annualIncome * 5.0;
@@ -429,35 +522,47 @@ document.addEventListener('DOMContentLoaded', () => {
         { req: "Loan Amount Limit", val: `₹${Number(loanAmt).toLocaleString('en-IN')}`, thresh: `₹${Number(maxLimit).toLocaleString('en-IN')}`, pass: amtPass }
       ];
 
-      document.getElementById('rep-policy-table-body').innerHTML = matrixRows.map(r => `
-        <tr>
-          <td style="font-weight: 500;">${r.req}</td>
-          <td>${r.val}</td>
-          <td style="color: var(--text-muted);">${r.thresh}</td>
-          <td class="${r.pass ? 'status-pass' : 'status-fail'}">${r.pass ? 'PASSED' : 'FAILED'}</td>
-        </tr>
-      `).join('');
+      const tableBody = getEl('rep-policy-table-body');
+      if (tableBody) {
+        tableBody.innerHTML = matrixRows.map(r => `
+          <tr>
+            <td style="font-weight: 500;">${r.req}</td>
+            <td>${r.val}</td>
+            <td style="color: var(--text-muted);">${r.thresh}</td>
+            <td class="${r.pass ? 'status-pass' : 'status-fail'}">${r.pass ? 'PASSED' : 'FAILED'}</td>
+          </tr>
+        `).join('');
+      }
 
       // Section 6: Formal Decision Narrative
-      document.getElementById('rep-narrative').textContent = isApproved
+      setTxt('rep-narrative', isApproved
         ? "Your application was carefully evaluated based on your identity, financial profile, employment details, and loan eligibility criteria. After verification, we found that all credit score, income, and employment parameters satisfy our lending policy. Your loan request has been approved."
-        : "Your application was carefully evaluated based on your identity, financial profile, employment details, and loan eligibility criteria. After verification, we found that your credit score and annual income do not satisfy our minimum lending policy requirements. For this reason, your loan request could not be approved at this time.";
+        : "Your application was carefully evaluated based on your identity, financial profile, employment details, and loan eligibility criteria. After verification, we found that your credit score and annual income do not satisfy our minimum lending policy requirements. For this reason, your loan request could not be approved at this time.");
 
       // Section 7: Recommended Next Step
-      document.getElementById('rep-next-steps').textContent = isApproved
+      setTxt('rep-next-steps', isApproved
         ? "Proceed to document verification and loan agreement execution with your designated loan officer."
-        : "You may improve your credit score above 700 or provide additional financial documentation before applying again.";
+        : "You may improve your credit score above 700 or provide additional financial documentation before applying again.");
 
     } catch (err) {
-      alert('Error generating decision summary report: ' + err.message);
+      console.error('Report modal generation error:', err);
+      showToast('Error', 'Unable to generate decision summary report.', 'error');
     }
   }
 
-  btnGenerateSummary.addEventListener('click', () => {
+  function setTxt(id, val) {
+    const el = getEl(id);
+    if (el) el.textContent = val;
+  }
+
+  onEvent('btn-generate-summary', 'click', () => {
     if (currentSessionId) openReportModal(currentSessionId);
   });
 
-  btnCloseModal.addEventListener('click', () => summaryModal.classList.remove('active'));
+  onEvent('btn-close-modal', 'click', () => {
+    const summaryModal = getEl('summary-modal');
+    if (summaryModal) summaryModal.classList.remove('active');
+  });
 
   function escapeHtml(str) {
     if (typeof str !== 'string') return str;
