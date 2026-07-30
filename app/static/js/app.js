@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSessionId = null;
   let allSessionsCache = [];
 
-  // Safe DOM Helpers to eliminate null reference crashes
+  // Safe DOM Helpers
   function getEl(id) {
     return document.getElementById(id);
   }
@@ -19,12 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function onEvent(id, event, callback) {
     const el = getEl(id);
-    if (el) {
-      el.addEventListener(event, callback);
-    }
+    if (el) el.addEventListener(event, callback);
   }
 
-  // Enterprise Toast Notification Function (Replaces browser alert popups)
+  // Enterprise Toast Notification
   function showToast(title, message, type = 'error') {
     const container = getEl('toast-container');
     if (!container) return;
@@ -38,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     container.appendChild(toast);
 
-    // Auto remove after 5 seconds
     setTimeout(() => {
       if (toast.parentNode) {
         toast.parentNode.removeChild(toast);
@@ -86,26 +83,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Dynamic Workflow Form Field Switcher
+  onEvent('form-workflow-select', 'change', (e) => {
+    const selected = e.target.value;
+    const loanGroup = getEl('workflow-fields-loan');
+    const kycGroup = getEl('workflow-fields-kyc');
+    const insGroup = getEl('workflow-fields-insurance');
+
+    if (loanGroup) loanGroup.style.display = selected === 'loan_approval' ? 'block' : 'none';
+    if (kycGroup) kycGroup.style.display = selected === 'kyc_verification' ? 'block' : 'none';
+    if (insGroup) insGroup.style.display = selected === 'insurance_claim' ? 'block' : 'none';
+  });
+
   // Clear Form Handler
-  function resetApplicationForm() {
+  function resetDecisionRequestForm() {
     const fields = [
-      'form-app-name', 'form-app-email', 'form-app-phone', 'form-app-pan',
-      'form-app-aadhaar', 'form-app-account', 'form-app-loan', 'form-app-income',
-      'form-app-employment', 'form-app-score'
+      'form-loan-name', 'form-loan-email', 'form-loan-phone', 'form-loan-pan',
+      'form-loan-aadhaar', 'form-loan-account', 'form-loan-amount', 'form-loan-income',
+      'form-loan-employment', 'form-loan-score',
+      'form-kyc-name', 'form-kyc-email', 'form-kyc-phone', 'form-kyc-docnum', 'form-kyc-facematch',
+      'form-ins-name', 'form-ins-policynum', 'form-ins-amount'
     ];
     fields.forEach(id => {
       const el = getEl(id);
       if (el) el.value = '';
     });
-
-    const purposeEl = getEl('form-app-purpose');
-    if (purposeEl) purposeEl.value = 'Personal Loan';
   }
 
-  onEvent('btn-clear-form', 'click', resetApplicationForm);
+  onEvent('btn-clear-form', 'click', resetDecisionRequestForm);
 
   onEvent('btn-new-app', 'click', () => {
-    resetApplicationForm();
+    resetDecisionRequestForm();
     const emptyState = getEl('explorer-empty-state');
     const resultCard = getEl('current-result-card');
     const dataSection = getEl('explorer-data-section');
@@ -121,93 +129,138 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnNew) btnNew.style.display = 'none';
 
     currentSessionId = null;
-    const nameEl = getEl('form-app-name');
-    if (nameEl) nameEl.focus();
   });
 
-  // Submit Application Action with Validation & Safe Error Handling
+  // Submit Decision Request Action
   onEvent('btn-submit-app', 'click', async () => {
-    const name = getVal('form-app-name');
-    const email = getVal('form-app-email');
-    const phone = getVal('form-app-phone');
-    const pan = getVal('form-app-pan');
-    const aadhaar = getVal('form-app-aadhaar');
-    const account = getVal('form-app-account');
-    const loanRaw = getVal('form-app-loan');
-    const incomeRaw = getVal('form-app-income');
-    const employment = getVal('form-app-employment');
-    const scoreRaw = getVal('form-app-score');
-    const purpose = getVal('form-app-purpose', 'Personal Loan');
+    const workflowType = getVal('form-workflow-select', 'loan_approval');
+    let promptText = '';
+    let payloadData = {};
 
-    const loan = parseFloat(loanRaw);
-    const income = parseFloat(incomeRaw);
-    const score = parseInt(scoreRaw, 10);
+    if (workflowType === 'loan_approval') {
+      const name = getVal('form-loan-name');
+      const email = getVal('form-loan-email');
+      const phone = getVal('form-loan-phone');
+      const pan = getVal('form-loan-pan');
+      const aadhaar = getVal('form-loan-aadhaar');
+      const account = getVal('form-loan-account');
+      const loanRaw = getVal('form-loan-amount');
+      const incomeRaw = getVal('form-loan-income');
+      const employment = getVal('form-loan-employment');
+      const scoreRaw = getVal('form-loan-score');
+      const purpose = getVal('form-loan-purpose', 'Personal Loan');
 
-    // Client-Side Validation
-    if (!name) {
-      showToast('Validation Error', 'Please enter the applicant full name before submitting.', 'warning');
-      const el = getEl('form-app-name');
-      if (el) el.focus();
-      return;
-    }
+      const loan = parseFloat(loanRaw);
+      const income = parseFloat(incomeRaw);
+      const score = parseInt(scoreRaw, 10);
 
-    if (isNaN(loan) || loan <= 0) {
-      showToast('Validation Error', 'Please enter a valid requested loan amount greater than zero.', 'warning');
-      const el = getEl('form-app-loan');
-      if (el) el.focus();
-      return;
-    }
+      // Validation
+      if (!name) {
+        showToast('Validation Error', 'Please enter the applicant full name.', 'warning');
+        return;
+      }
+      if (isNaN(loan) || loan <= 0) {
+        showToast('Validation Error', 'Please enter a valid requested loan amount.', 'warning');
+        return;
+      }
+      if (isNaN(income) || income <= 0) {
+        showToast('Validation Error', 'Please enter a valid annual income.', 'warning');
+        return;
+      }
+      if (!employment) {
+        showToast('Validation Error', 'Please select an employment category.', 'warning');
+        return;
+      }
+      if (isNaN(score) || score < 300 || score > 900) {
+        showToast('Validation Error', 'Please enter a valid Credit Score between 300 and 900.', 'warning');
+        return;
+      }
 
-    if (isNaN(income) || income <= 0) {
-      showToast('Validation Error', 'Please enter a valid annual income greater than zero.', 'warning');
-      const el = getEl('form-app-income');
-      if (el) el.focus();
-      return;
-    }
+      promptText = 
+        `Evaluate loan approval for applicant ${name}. Credit Score: ${score}. Annual Income: ${income}. ` +
+        `Employment: ${employment}. Loan Amount: ${loan}. Email: ${email || 'ramesh@example.com'}, ` +
+        `Phone: ${phone || '+91 9876543210'}. PAN: ${pan || 'ABCDE1234F'}, Aadhaar: ${aadhaar || '9999-8888-7777'}. ` +
+        `Bank Account: ${account || '5432109876543'}. Purpose: ${purpose}.`;
 
-    if (!employment) {
-      showToast('Validation Error', 'Please select an employment category.', 'warning');
-      const el = getEl('form-app-employment');
-      if (el) el.focus();
-      return;
-    }
-
-    if (isNaN(score) || score < 300 || score > 900) {
-      showToast('Validation Error', 'Please enter a valid Credit Score between 300 and 900.', 'warning');
-      const el = getEl('form-app-score');
-      if (el) el.focus();
-      return;
-    }
-
-    // Construct Prompt Dynamically
-    const promptText = 
-      `Evaluate loan approval for applicant ${name}. ` +
-      `Credit Score: ${score}. Annual Income: ${income}. Employment: ${employment}. Loan Amount: ${loan}. ` +
-      `Email: ${email || 'ramesh@example.com'}, Phone: ${phone || '+91 9876543210'}. ` +
-      `PAN: ${pan || 'ABCDE1234F'}, Aadhaar: ${aadhaar || '9999-8888-7777'}. Bank Account: ${account || '5432109876543'}. Purpose: ${purpose}.`;
-
-    const btnSubmit = getEl('btn-submit-app');
-    if (btnSubmit) {
-      btnSubmit.disabled = true;
-      btnSubmit.textContent = 'Processing Verification...';
-    }
-
-    try {
-      const payload = {
-        user_id: 'usr_loan_officer_101',
+      payloadData = {
+        user_id: 'usr_governance_officer',
         prompt: promptText,
         agent_type: 'loan_approval',
         credit_score: score,
         annual_income: income,
         employment_type: employment,
-        loan_amount: loan,
-        simulate_error: getBool('simulate-error-check', false)
+        loan_amount: loan
       };
 
+    } else if (workflowType === 'kyc_verification') {
+      const name = getVal('form-kyc-name');
+      const email = getVal('form-kyc-email');
+      const phone = getVal('form-kyc-phone');
+      const docType = getVal('form-kyc-doctype', 'PAN Card');
+      const docNum = getVal('form-kyc-docnum');
+      const faceMatch = getVal('form-kyc-facematch', '95');
+      const address = getVal('form-kyc-address', 'Verified');
+
+      if (!name) {
+        showToast('Validation Error', 'Please enter subject full name for KYC evaluation.', 'warning');
+        return;
+      }
+
+      promptText = 
+        `Evaluate KYC identity verification for ${name}. Email: ${email || 'priya@example.com'}, ` +
+        `Phone: ${phone || '+91 9876543210'}. Document Type: ${docType}, Document ID: ${docNum || 'ABCDE1234F'}. ` +
+        `Face Match Rating: ${faceMatch}%, Address Verification: ${address}.`;
+
+      payloadData = {
+        user_id: 'usr_kyc_auditor',
+        prompt: promptText,
+        agent_type: 'kyc_verification',
+        credit_score: 750,
+        annual_income: 800000,
+        employment_type: 'Salaried',
+        loan_amount: 100000
+      };
+
+    } else if (workflowType === 'insurance_claim') {
+      const name = getVal('form-ins-name');
+      const policyNum = getVal('form-ins-policynum');
+      const category = getVal('form-ins-category', 'Health');
+      const amountRaw = getVal('form-ins-amount');
+      const proof = getVal('form-ins-proof', 'Yes');
+
+      if (!name) {
+        showToast('Validation Error', 'Please enter policyholder name.', 'warning');
+        return;
+      }
+
+      const claimAmt = parseFloat(amountRaw) || 150000;
+
+      promptText = 
+        `Evaluate insurance claim for policyholder ${name}. Policy Number: ${policyNum || 'POL-9876543'}, ` +
+        `Claim Category: ${category}, Claim Amount: ₹${claimAmt}, Document Proof Attached: ${proof}.`;
+
+      payloadData = {
+        user_id: 'usr_claim_auditor',
+        prompt: promptText,
+        agent_type: 'insurance_claim',
+        credit_score: 750,
+        annual_income: 1000000,
+        employment_type: 'Salaried',
+        loan_amount: claimAmt
+      };
+    }
+
+    const btnSubmit = getEl('btn-submit-app');
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Evaluating AI Decision Path...';
+    }
+
+    try {
       const res = await fetch('/api/v1/agent/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payloadData)
       });
 
       if (!res.ok) {
@@ -217,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       currentSessionId = data.session_id;
 
-      // Reveal Single Current Application Card & Top Action Buttons
+      // Reveal Result Card & Top Buttons
       const emptyState = getEl('explorer-empty-state');
       const resultCard = getEl('current-result-card');
       const btnHistory = getEl('btn-toggle-history');
@@ -228,35 +281,37 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btnHistory) btnHistory.style.display = 'inline-flex';
       if (btnNew) btnNew.style.display = 'inline-flex';
 
-      // Populate Current Card Info
       setTxt('current-card-session-id', data.session_id);
       setTxt('current-card-time', new Date().toLocaleTimeString());
+
+      const wfLabel = workflowType === 'loan_approval' ? 'Loan Underwriting Workflow' :
+                     (workflowType === 'kyc_verification' ? 'KYC Verification Workflow' : 'Insurance Claim Processing Workflow');
+      setTxt('current-card-workflow', wfLabel);
 
       const isApproved = !data.final_output_redacted.toLowerCase().includes('rejected');
       const badgeElem = getEl('current-card-decision-badge');
       if (badgeElem) {
         badgeElem.innerHTML = isApproved 
-          ? `<span class="badge badge-approved">APPROVED</span>`
+          ? `<span class="badge badge-approved">APPROVED / VERIFIED</span>`
           : `<span class="badge badge-rejected">REJECTED</span>`;
       }
 
-      showToast('Verification Complete', 'Application processed. Displaying decision trace and audit report.', 'success');
+      showToast('Decision Audit Logged', 'AI Decision path reconstructed and immutable audit trace saved.', 'success');
 
-      // Render 9-Step Timeline for Newly Created Session
       await viewTimeline(data.session_id);
 
     } catch (err) {
-      console.error('Application verification error:', err);
-      showToast('System Error', 'Application verification could not be completed. Please try again or contact system administration.', 'error');
+      console.error('Decision evaluation error:', err);
+      showToast('System Error', 'AI Decision evaluation could not be completed. Please try again.', 'error');
     } finally {
       if (btnSubmit) {
         btnSubmit.disabled = false;
-        btnSubmit.textContent = 'Submit Application';
+        btnSubmit.textContent = 'Submit Decision Request';
       }
     }
   });
 
-  // Current Card Button Event Handlers
+  // Current Card Buttons
   onEvent('btn-card-view-report', 'click', () => {
     if (currentSessionId) openReportModal(currentSessionId);
   });
@@ -266,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (timelineSection) timelineSection.scrollIntoView({ behavior: 'smooth' });
   });
 
-  // Toggle Historical Audit Records View
+  // Toggle History View
   onEvent('btn-toggle-history', 'click', async () => {
     const dataSection = getEl('explorer-data-section');
     const btnHistory = getEl('btn-toggle-history');
@@ -303,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Filter & Render Data Table
+  // Render Table
   function renderFilteredSessions() {
     const tableBody = getEl('session-table-body');
     if (!tableBody) return;
@@ -333,12 +388,12 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr>
           <td style="font-family: var(--font-mono); font-weight: 500; color: var(--text-primary);">${s.session_id}</td>
           <td>${s.user_id}</td>
-          <td>${s.agent_name === 'LoanApprovalAgent' ? 'Loan Underwriting Workflow' : 'KYC Verification Workflow'}</td>
+          <td>${s.agent_name}</td>
           <td>${statusBadge}</td>
           <td>${new Date(s.started_at).toLocaleTimeString()}</td>
           <td>
-            <button class="btn btn-secondary btn-sm btn-timeline" data-id="${s.session_id}">View Audit Timeline</button>
-            <button class="btn btn-primary btn-sm btn-report" data-id="${s.session_id}">View Audit Report</button>
+            <button class="btn btn-secondary btn-sm btn-timeline" data-id="${s.session_id}">View Timeline</button>
+            <button class="btn btn-primary btn-sm btn-report" data-id="${s.session_id}">View Report</button>
           </td>
         </tr>
       `;
@@ -356,7 +411,6 @@ document.addEventListener('DOMContentLoaded', () => {
   onEvent('filter-search', 'input', renderFilteredSessions);
   onEvent('filter-workflow', 'change', renderFilteredSessions);
   onEvent('filter-status', 'change', renderFilteredSessions);
-  onEvent('btn-refresh-sessions', 'click', loadSessions);
 
   // View Business Timeline
   async function viewTimeline(sessionId) {
@@ -376,37 +430,37 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       timelineContainer.innerHTML = data.timeline.map(step => {
-        let stepTitle = 'System Step';
+        let stepTitle = 'System Verification Step';
         let bodyHtml = '';
 
         if (step.event_type === 'USER_INPUT') {
-          stepTitle = 'Application Receipt & Data Protection';
+          stepTitle = 'Decision Request & Data Protection';
           bodyHtml = `
             <div style="margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-              The loan application was received and passed through automated personal data protection before audit storage.
+              The decision evaluation request was received and passed through automated data protection before audit log storage.
             </div>
             <div class="kv-group">
-              <span class="kv-label">Secured Application Record</span>
+              <span class="kv-label">Secured Decision Request Payload</span>
               <div class="kv-value" style="background: var(--bg-dark); padding: 0.6rem 0.8rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.82rem; margin-top: 0.2rem; color: var(--text-primary);">
                 ${escapeHtml(step.user_input)}
               </div>
             </div>
           `;
         } else if (step.event_type === 'CONTEXT_RETRIEVAL') {
-          stepTitle = 'Lending Policy Rules Retrieval';
+          stepTitle = 'Workflow Policy Rules Retrieval';
           bodyHtml = `
             <div>
-              <span class="kv-label">Bank Policy Rules</span>
+              <span class="kv-label">Active Workflow Rules Applied</span>
               <div class="kv-value" style="background: var(--bg-dark); padding: 0.6rem 0.8rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.82rem; margin-top: 0.2rem; color: var(--text-secondary);">
                 ${escapeHtml(step.retrieved_context)}
               </div>
             </div>
           `;
         } else if (step.event_type === 'REASONING') {
-          stepTitle = 'Application Assessment';
+          stepTitle = 'Decision Evaluation Assessment';
           bodyHtml = `
             <div>
-              <span class="kv-label">Assessment Summary</span>
+              <span class="kv-label">Assessment Trace Finding</span>
               <div class="kv-value" style="color: var(--status-warning-text); background: var(--status-warning-bg); padding: 0.6rem 0.8rem; border-radius: 4px; border-left: 3px solid var(--status-warning-text); margin-top: 0.2rem;">
                 ${escapeHtml(step.intermediate_reasoning)}
               </div>
@@ -435,16 +489,16 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             `;
           } else if (tName === 'evaluate_loan_underwriting') {
-            stepTitle = 'Loan Eligibility Assessment';
+            stepTitle = 'Workflow Eligibility Evaluation';
             const isApp = tResp.approved;
             bodyHtml = `
               <div class="kv-grid" style="margin-bottom: 0.75rem;">
-                <div class="kv-group"><span class="kv-label">Requested Loan Amount</span><span class="kv-value">₹${Number(tParams.loan_amount || 0).toLocaleString('en-IN')}</span></div>
-                <div class="kv-group"><span class="kv-label">Assessment Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'Eligible (Approved)' : 'Not Eligible (Rejected)'}</span></div>
+                <div class="kv-group"><span class="kv-label">Requested Value</span><span class="kv-value">₹${Number(tParams.loan_amount || 0).toLocaleString('en-IN')}</span></div>
+                <div class="kv-group"><span class="kv-label">Evaluation Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'Eligible (Approved)' : 'Not Eligible (Rejected)'}</span></div>
               </div>
               ${!isApp && tResp.rejection_reasons ? `
                 <div class="kv-group">
-                  <span class="kv-label">Reason</span>
+                  <span class="kv-label">Policy Reason</span>
                   <div class="kv-value status-fail" style="background: var(--status-danger-bg); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--status-danger-border); font-size: 0.82rem; margin-top: 0.25rem;">
                     ${(tResp.rejection_reasons || []).join('; ')}
                   </div>
@@ -452,15 +506,15 @@ document.addEventListener('DOMContentLoaded', () => {
               ` : ''}
             `;
           } else {
-            stepTitle = 'System Verification Step';
+            stepTitle = 'Verification Step';
             bodyHtml = `<div class="kv-value">Verification Step Completed.</div>`;
           }
 
         } else if (step.event_type === 'FINAL_OUTPUT') {
-          stepTitle = 'Final Decision';
+          stepTitle = 'Final Decision Determination';
           bodyHtml = `
             <div>
-              <span class="kv-label">Final Decision Determination</span>
+              <span class="kv-label">AI Decision Outcome</span>
               <div class="kv-value" style="background: var(--bg-surface-elevated); padding: 0.75rem; border-radius: 4px; border-left: 4px solid var(--accent-blue); font-weight: 500; margin-top: 0.2rem;">
                 ${escapeHtml(step.final_output)}
               </div>
@@ -519,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Section 1: Metadata
       setTxt('rep-session-id', session.session_id);
       setTxt('rep-user-id', session.user_id);
-      setTxt('rep-workflow', session.agent_name === 'LoanApprovalAgent' ? 'Loan Underwriting Workflow' : 'KYC Verification Workflow');
+      setTxt('rep-workflow', session.agent_name);
       setTxt('rep-status', session.status);
 
       // Extract Underwriting Tool parameters & response
@@ -535,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isApproved = toolResp.approved !== undefined ? toolResp.approved : true;
       const rejectionReasons = toolResp.rejection_reasons || [];
 
-      // Section 2: Applicant Info (Protected)
+      // Section 2: Request Params (Protected)
       setTxt('rep-app-income', `₹${Number(annualIncome).toLocaleString('en-IN')}`);
       setTxt('rep-app-employment', empType);
       setTxt('rep-app-loan', `₹${Number(loanAmt).toLocaleString('en-IN')}`);
@@ -545,14 +599,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const badgeElem = getEl('rep-decision-badge');
       if (badgeElem) {
         badgeElem.innerHTML = isApproved 
-          ? `<span class="badge badge-approved">APPROVED</span>`
+          ? `<span class="badge badge-approved">APPROVED / VERIFIED</span>`
           : `<span class="badge badge-rejected">REJECTED</span>`;
       }
 
       setTxt('rep-confidence', `${(summaryData.confidence_score * 100).toFixed(1)}%`);
       setTxt('rep-decision-reasons', isApproved
-        ? "The applicant satisfied all credit score, annual income, employment stability, and debt-to-income policy requirements."
-        : rejectionReasons.join("; ") || "Ineligible under lending policy criteria.");
+        ? "The request satisfied all credit score, annual income, employment stability, and policy requirements."
+        : rejectionReasons.join("; ") || "Ineligible under workflow policy criteria.");
 
       // Section 5: Policy Evaluation Matrix Table
       const maxLimit = annualIncome * 5.0;
@@ -562,10 +616,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const amtPass = loanAmt <= maxLimit;
 
       const matrixRows = [
-        { req: "Credit Score", val: creditScore, thresh: "700", pass: csPass },
-        { req: "Annual Income", val: `₹${Number(annualIncome).toLocaleString('en-IN')}`, thresh: "₹6,00,000", pass: incPass },
-        { req: "Employment Type", val: empType, thresh: "Salaried / Self-Employed", pass: empPass },
-        { req: "Loan Amount Limit", val: `₹${Number(loanAmt).toLocaleString('en-IN')}`, thresh: `₹${Number(maxLimit).toLocaleString('en-IN')}`, pass: amtPass }
+        { req: "Credit Score Threshold", val: creditScore, thresh: "700", pass: csPass },
+        { req: "Annual Income Threshold", val: `₹${Number(annualIncome).toLocaleString('en-IN')}`, thresh: "₹6,00,000", pass: incPass },
+        { req: "Employment Category Eligibility", val: empType, thresh: "Salaried / Self-Employed", pass: empPass },
+        { req: "Maximum Limit Ratio", val: `₹${Number(loanAmt).toLocaleString('en-IN')}`, thresh: `₹${Number(maxLimit).toLocaleString('en-IN')}`, pass: amtPass }
       ];
 
       const tableBody = getEl('rep-policy-table-body');
@@ -588,8 +642,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Section 7: Recommended Next Step
       setTxt('rep-next-steps', isApproved
-        ? "Proceed to document verification and loan agreement execution with your designated loan officer."
-        : "You may apply again after updating your employment status, improving your credit score above 700, or contacting the bank for manual review.");
+        ? "Proceed to next operational step or document execution."
+        : "You may re-apply after addressing policy requirements or contacting system administration for manual review.");
 
     } catch (err) {
       console.error('Report modal generation error:', err);
