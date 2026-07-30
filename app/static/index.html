@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PS-7.1 - Decision Path Auditor</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="logo-group">
+        <div class="logo-icon">DP</div>
+        <div class="logo-text">
+          <h1>Decision Path Auditor</h1>
+          <span>PS-7.1 AI Governance Engine</span>
+        </div>
+      </div>
+      <div class="system-status">
+        <div class="status-badge">
+          <div class="status-dot" id="db-status-dot"></div>
+          <span id="db-status-text">Database: Connecting...</span>
+        </div>
+        <div class="status-badge">
+          <div class="status-dot" id="groq-status-dot" style="background: var(--accent-purple); box-shadow: 0 0 10px var(--accent-purple);"></div>
+          <span id="groq-status-text">Groq LLM Active</span>
+        </div>
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span>PII Redactor Engine Active</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN DASHBOARD GRID -->
+    <div class="dashboard-grid">
+      
+      <!-- LEFT PANEL: AGENT SIMULATOR -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Agent Simulator
+          </div>
+        </div>
+
+        <div class="prefill-bar">
+          <button class="btn btn-secondary btn-sm" id="btn-prefill-loan">⚡ Prefill Loan Request (with PII)</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Workflow Type</label>
+          <select class="form-select" id="agent-type-select">
+            <option value="loan_approval">Loan Approval Agent (RAG + Credit Tool)</option>
+            <option value="kyc_verifier">KYC Verification Agent</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">User ID</label>
+          <input type="text" class="form-input" id="user-id-input" value="usr_ramesh_kumar_902">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Prompt / Request (Contains PII)</label>
+          <textarea class="form-textarea" id="prompt-input" placeholder="Type prompt containing PAN, Aadhaar, Email, Phone..."></textarea>
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="checkbox" id="simulate-error-check">
+          <label for="simulate-error-check" style="font-size: 0.85rem; color: var(--text-muted);">Simulate API Failure (Error Audit)</label>
+        </div>
+
+        <button class="btn btn-primary" id="btn-run-simulation" style="width: 100%;">
+          Run Instrumented Agent Execution
+        </button>
+      </div>
+
+      <!-- RIGHT PANEL: AUDIT SESSIONS & TIMELINE RECONSTRUCTOR -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Audit Sessions Explorer
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-sessions">🔄 Refresh</button>
+        </div>
+
+        <div class="session-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Session ID</th>
+                <th>User ID</th>
+                <th>Agent</th>
+                <th>Status</th>
+                <th>Started</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="session-table-body">
+              <tr><td colspan="6" style="text-align: center; color: var(--text-dim);">No sessions found. Run a simulation above!</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- TIMELINE RECONSTRUCTOR VIEW -->
+        <div id="timeline-section" style="margin-top: 2rem; display: none;">
+          <div class="panel-header">
+            <div class="panel-title" style="color: var(--accent-cyan);">
+              Decision Path Timeline: <span id="active-session-id" style="color: #fff; font-family: var(--font-mono);"></span>
+            </div>
+            <button class="btn btn-purple btn-sm" id="btn-generate-summary">
+              ✨ Groq Plain-English Summary
+            </button>
+          </div>
+
+          <div class="timeline-container" id="timeline-container">
+            <!-- Dynamic step cards inserted here -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- SUMMARY MODAL -->
+  <div class="modal-overlay" id="summary-modal">
+    <div class="modal-content">
+      <div class="panel-header">
+        <div class="panel-title" style="color: var(--accent-purple);">
+          ✨ Groq LLM Decision Summary
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btn-close-modal">✕ Close</button>
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--text-dim);" id="modal-llm-model"></p>
+
+      <div class="summary-box" id="modal-summary-text">
+        Generating summary using Groq LLM...
+      </div>
+
+      <h4 style="margin-top: 1rem; font-size: 0.9rem; color: #fff;">Key Decisions Executed:</h4>
+      <ul class="decision-bullets" id="modal-key-decisions">
+      </ul>
+
+      <div style="margin-top: 1.5rem; text-align: right;">
+        <button class="btn btn-primary btn-sm" id="btn-close-modal-bottom">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
