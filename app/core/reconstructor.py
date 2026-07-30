@@ -52,10 +52,12 @@ class DecisionPathReconstructor:
         if end_date:
             conditions.append(AuditSession.started_at <= end_date)
 
+        stmt = select(AuditSession)
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+        
         stmt = (
-            select(AuditSession)
-            .where(and_(*conditions) if conditions else True)
-            .order_by(AuditSession.started_at.desc())
+            stmt.order_by(AuditSession.started_at.desc())
             .limit(limit)
             .offset(offset)
             .options(selectinload(AuditSession.events))
