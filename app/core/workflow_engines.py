@@ -14,6 +14,7 @@ logger = logging.getLogger("audit.workflow_engines")
 # =====================================================================
 @audit_tool("verify_credit_score")
 async def verify_credit_score_tool(wrapper: InstrumentedAgentWrapper, user_id: str, pan_card: str, credit_score: int) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] verify_credit_score | User: {user_id} | Score: {credit_score}")
     await asyncio.sleep(0.05)
     return {
         "credit_score": credit_score,
@@ -25,6 +26,7 @@ async def verify_credit_score_tool(wrapper: InstrumentedAgentWrapper, user_id: s
 
 @audit_tool("check_account_balance")
 async def check_account_balance_tool(wrapper: InstrumentedAgentWrapper, account_no: str, annual_income: float) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] check_account_balance | Account: {account_no}")
     await asyncio.sleep(0.05)
     estimated_monthly_balance = round(annual_income / 12.0 * 0.65, 2)
     return {
@@ -43,6 +45,7 @@ async def evaluate_loan_underwriting_tool(
     employment_type: str,
     loan_amount: float
 ) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] evaluate_loan_underwriting | Loan: ₹{loan_amount:,.2f}")
     await asyncio.sleep(0.05)
     rejection_reasons = []
 
@@ -52,7 +55,7 @@ async def evaluate_loan_underwriting_tool(
     if annual_income < 600000.0:
         rejection_reasons.append(f"Annual income (₹{annual_income:,.2f}) is below minimum requirement of ₹6,00,000")
 
-    if employment_type.strip().lower() == "contract employee":
+    if str(employment_type).strip().lower() == "contract employee":
         rejection_reasons.append("Employment category 'Contract Employee' is ineligible under lending policy")
 
     max_eligible_loan = annual_income * 5.0
@@ -79,8 +82,9 @@ async def evaluate_loan_underwriting_tool(
 # =====================================================================
 @audit_tool("verify_identity_document")
 async def verify_identity_document_tool(wrapper: InstrumentedAgentWrapper, doc_type: str, doc_number: str) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] verify_identity_document | Type: {doc_type}")
     await asyncio.sleep(0.05)
-    is_valid = len(doc_number) >= 5
+    is_valid = len(str(doc_number)) >= 5
     return {
         "document_type": doc_type,
         "document_number": doc_number,
@@ -91,6 +95,7 @@ async def verify_identity_document_tool(wrapper: InstrumentedAgentWrapper, doc_t
 
 @audit_tool("evaluate_face_biometrics")
 async def evaluate_face_biometrics_tool(wrapper: InstrumentedAgentWrapper, match_score: float) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] evaluate_face_biometrics | Match Rating: {match_score}%")
     await asyncio.sleep(0.05)
     is_pass = match_score >= 90.0
     return {
@@ -102,8 +107,9 @@ async def evaluate_face_biometrics_tool(wrapper: InstrumentedAgentWrapper, match
 
 @audit_tool("verify_address_registry")
 async def verify_address_registry_tool(wrapper: InstrumentedAgentWrapper, address_status: str) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] verify_address_registry | Status: {address_status}")
     await asyncio.sleep(0.05)
-    is_verified = address_status.strip().lower() in ["verified", "matched", "match"]
+    is_verified = str(address_status).strip().lower() in ["verified", "matched", "match", "yes"]
     return {
         "address_verification_status": "VERIFIED" if is_verified else "MISMATCH",
         "registry_match": is_verified
@@ -120,6 +126,7 @@ async def evaluate_kyc_compliance_tool(
     match_score: float,
     address_status: str
 ) -> Dict[str, Any]:
+    logger.info("[TOOL START] evaluate_kyc_compliance")
     await asyncio.sleep(0.05)
     rejection_reasons = []
 
@@ -149,8 +156,9 @@ async def evaluate_kyc_compliance_tool(
 # =====================================================================
 @audit_tool("verify_policy_status")
 async def verify_policy_status_tool(wrapper: InstrumentedAgentWrapper, policy_number: str, category: str) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] verify_policy_status | Policy: {policy_number}")
     await asyncio.sleep(0.05)
-    is_active = len(policy_number) >= 3
+    is_active = len(str(policy_number)) >= 3
     return {
         "policy_number": policy_number,
         "claim_category": category,
@@ -161,8 +169,9 @@ async def verify_policy_status_tool(wrapper: InstrumentedAgentWrapper, policy_nu
 
 @audit_tool("validate_claim_documents")
 async def validate_claim_documents_tool(wrapper: InstrumentedAgentWrapper, proof_attached: str) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] validate_claim_documents | Proof: {proof_attached}")
     await asyncio.sleep(0.05)
-    has_proof = proof_attached.strip().lower() in ["yes", "true", "verified", "attached"]
+    has_proof = str(proof_attached).strip().lower() in ["yes", "true", "verified", "attached", "yes (verified)"]
     return {
         "document_proof_attached": "ATTACHED" if has_proof else "MISSING",
         "proof_verified": has_proof
@@ -178,6 +187,7 @@ async def evaluate_claim_underwriting_tool(
     policy_number: str,
     category: str
 ) -> Dict[str, Any]:
+    logger.info(f"[TOOL START] evaluate_claim_underwriting | Amount: ₹{claim_amount:,.2f}")
     await asyncio.sleep(0.05)
     rejection_reasons = []
 
@@ -226,14 +236,14 @@ class LoanUnderwritingEngine(BaseWorkflowEngine):
         prompt: str,
         request_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        credit_score = request_data.get("credit_score", 750)
-        annual_income = request_data.get("annual_income", 1200000.0)
-        employment_type = request_data.get("employment_type", "Salaried")
-        loan_amount = request_data.get("loan_amount", 500000.0)
-        pan_card = request_data.get("pan_card", "ABCDE1234F")
-        account_no = request_data.get("account_no", "5432109876543")
+        logger.info("[ENGINE START] LoanUnderwritingEngine")
+        credit_score = request_data.get("credit_score") or 750
+        annual_income = float(request_data.get("annual_income") or 1200000.0)
+        employment_type = str(request_data.get("employment_type") or "Salaried")
+        loan_amount = float(request_data.get("loan_amount") or 500000.0)
+        pan_card = str(request_data.get("pan_card") or "ABCDE1234F")
+        account_no = str(request_data.get("account_no") or "5432109876543")
 
-        # Step 2: Context Retrieval
         rag_context = (
             "Bank Lending Policy Rules: "
             "1. Minimum Credit Score: 700. "
@@ -243,21 +253,17 @@ class LoanUnderwritingEngine(BaseWorkflowEngine):
         )
         await wrapper.log_retrieved_context(rag_context)
 
-        # Step 3: Reasoning
         await wrapper.log_reasoning(
             "Application Assessment: The system analyzed the applicant's financial details and compared them with the loan eligibility policy."
         )
 
-        # Tool 1 & Tool 2 Execution
         credit_res = await verify_credit_score_tool(wrapper, user_id=wrapper.user_id, pan_card=pan_card, credit_score=credit_score)
         balance_res = await check_account_balance_tool(wrapper, account_no=account_no, annual_income=annual_income)
 
-        # Intermediate Reasoning
         await wrapper.log_reasoning(
             "The application met initial credit and banking verification steps and is now being evaluated for the final decision."
         )
 
-        # Tool 3 Execution
         underwrite_res = await evaluate_loan_underwriting_tool(
             wrapper,
             credit_score=credit_score,
@@ -266,7 +272,6 @@ class LoanUnderwritingEngine(BaseWorkflowEngine):
             loan_amount=loan_amount
         )
 
-        # Final Output
         if underwrite_res["approved"]:
             final_text = f"Loan Application Approved: Your requested loan of ₹{loan_amount:,.2f} satisfies all credit score, income, and employment policy requirements."
         else:
@@ -274,6 +279,7 @@ class LoanUnderwritingEngine(BaseWorkflowEngine):
             final_text = f"Loan Application Rejected: Your requested loan of ₹{loan_amount:,.2f} could not be approved at this time. Reason(s): {reasons_formatted}."
 
         await wrapper.log_final_output(final_text)
+        logger.info(f"[ENGINE COMPLETED] LoanUnderwritingEngine | Approved: {underwrite_res['approved']}")
         return {"approved": underwrite_res["approved"], "final_output": final_text}
 
 
@@ -287,12 +293,12 @@ class KYCVerificationEngine(BaseWorkflowEngine):
         prompt: str,
         request_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        doc_type = request_data.get("document_type", "PAN Card")
-        doc_number = request_data.get("document_number", "ABCDE1234F")
-        match_score = float(request_data.get("face_match_score", 95.0))
-        address_status = request_data.get("address_status", "Verified")
+        logger.info("[ENGINE START] KYCVerificationEngine")
+        doc_type = str(request_data.get("document_type") or "PAN Card")
+        doc_number = str(request_data.get("document_number") or "ABCDE1234F")
+        match_score = float(request_data.get("face_match_score") or 95.0)
+        address_status = str(request_data.get("address_status") or "Verified")
 
-        # Step 2: Context Retrieval
         rag_context = (
             "KYC Regulatory Verification Rules: "
             "1. Valid Government Identity Document (PAN, Aadhaar, Passport, Driving License). "
@@ -301,22 +307,18 @@ class KYCVerificationEngine(BaseWorkflowEngine):
         )
         await wrapper.log_retrieved_context(rag_context)
 
-        # Step 3: Reasoning
         await wrapper.log_reasoning(
             "Identity Assessment: The system extracted the identity document and biometric parameters to evaluate KYC compliance."
         )
 
-        # Tool 1, 2, 3 Execution
         doc_res = await verify_identity_document_tool(wrapper, doc_type=doc_type, doc_number=doc_number)
         face_res = await evaluate_face_biometrics_tool(wrapper, match_score=match_score)
         addr_res = await verify_address_registry_tool(wrapper, address_status=address_status)
 
-        # Intermediate Reasoning
         await wrapper.log_reasoning(
             "The subject's document format, facial biometrics, and address registry match ratings have been verified against KYC regulations."
         )
 
-        # Tool 4 Execution
         kyc_res = await evaluate_kyc_compliance_tool(
             wrapper,
             doc_valid=doc_res["registry_verified"],
@@ -327,7 +329,6 @@ class KYCVerificationEngine(BaseWorkflowEngine):
             address_status=address_status
         )
 
-        # Final Output
         if kyc_res["approved"]:
             final_text = f"KYC Verification Approved: Identity document ({doc_type}), biometric face match ({match_score}%), and address registry status satisfy all regulatory requirements."
         else:
@@ -335,6 +336,7 @@ class KYCVerificationEngine(BaseWorkflowEngine):
             final_text = f"KYC Verification Rejected: Identity verification could not be completed. Reason(s): {reasons_formatted}."
 
         await wrapper.log_final_output(final_text)
+        logger.info(f"[ENGINE COMPLETED] KYCVerificationEngine | Approved: {kyc_res['approved']}")
         return {"approved": kyc_res["approved"], "final_output": final_text}
 
 
@@ -348,12 +350,12 @@ class InsuranceClaimEngine(BaseWorkflowEngine):
         prompt: str,
         request_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        policy_number = request_data.get("policy_number", "POL-9876543")
-        category = request_data.get("claim_category", "Health")
-        claim_amount = float(request_data.get("claim_amount", 150000.0))
-        proof_attached = request_data.get("proof_attached", "Yes")
+        logger.info("[ENGINE START] InsuranceClaimEngine")
+        policy_number = str(request_data.get("policy_number") or "POL-9876543")
+        category = str(request_data.get("claim_category") or "Health")
+        claim_amount = float(request_data.get("claim_amount") or 150000.0)
+        proof_attached = str(request_data.get("proof_attached") or "Yes")
 
-        # Step 2: Context Retrieval
         rag_context = (
             "Insurance Underwriting Policy Rules: "
             "1. Policy Status: Active & Valid Coverage. "
@@ -362,21 +364,17 @@ class InsuranceClaimEngine(BaseWorkflowEngine):
         )
         await wrapper.log_retrieved_context(rag_context)
 
-        # Step 3: Reasoning
         await wrapper.log_reasoning(
             "Claim Assessment: The system retrieved policy coverage details and verified attached supporting documents."
         )
 
-        # Tool 1 & 2 Execution
         policy_res = await verify_policy_status_tool(wrapper, policy_number=policy_number, category=category)
         doc_res = await validate_claim_documents_tool(wrapper, proof_attached=proof_attached)
 
-        # Intermediate Reasoning
         await wrapper.log_reasoning(
             "Policy status and document proof attachments were validated against insurance policy thresholds."
         )
 
-        # Tool 3 Execution
         claim_res = await evaluate_claim_underwriting_tool(
             wrapper,
             policy_active=policy_res["coverage_valid"],
@@ -386,7 +384,6 @@ class InsuranceClaimEngine(BaseWorkflowEngine):
             category=category
         )
 
-        # Final Output
         if claim_res["approved"]:
             final_text = f"Insurance Claim Approved: Your claim of ₹{claim_amount:,.2f} under Policy {policy_number} ({category}) satisfies all policy coverage and document requirements."
         else:
@@ -394,6 +391,7 @@ class InsuranceClaimEngine(BaseWorkflowEngine):
             final_text = f"Insurance Claim Rejected: Claim of ₹{claim_amount:,.2f} under Policy {policy_number} could not be approved automatically. Reason(s): {reasons_formatted}."
 
         await wrapper.log_final_output(final_text)
+        logger.info(f"[ENGINE COMPLETED] InsuranceClaimEngine | Approved: {claim_res['approved']}")
         return {"approved": claim_res["approved"], "final_output": final_text}
 
 

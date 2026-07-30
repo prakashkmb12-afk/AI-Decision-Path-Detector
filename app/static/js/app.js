@@ -22,10 +22,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el) el.addEventListener(event, callback);
   }
 
-  // Enterprise Toast Notification
+  // Enterprise Toast Notification (Single Toast Guard)
   function showToast(title, message, type = 'error') {
     const container = getEl('toast-container');
     if (!container) return;
+
+    // Clear previous error/warning notifications to ensure only one is displayed
+    if (type === 'error' || type === 'warning') {
+      container.innerHTML = '';
+    }
 
     const toast = document.createElement('div');
     toast.className = `toast-message toast-${type}`;
@@ -264,7 +269,24 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`);
+        let errDetail = 'Unable to process your request. Please verify the entered information and try again.';
+        try {
+          const errJson = await res.json();
+          if (errJson && errJson.detail) {
+            errDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
+          }
+        } catch (_) {}
+
+        if (res.status === 400) {
+          showToast('Invalid Request Data', errDetail, 'warning');
+        } else if (res.status === 404) {
+          showToast('Workflow Unavailable', errDetail, 'warning');
+        } else if (res.status === 422) {
+          showToast('Validation Error', 'Invalid request format or missing required fields.', 'warning');
+        } else {
+          showToast('Processing Error', errDetail, 'error');
+        }
+        return;
       }
 
       const data = await res.json();
@@ -288,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      (workflowType === 'kyc_verification' ? 'KYC Verification Workflow' : 'Insurance Claim Processing Workflow');
       setTxt('current-card-workflow', wfLabel);
 
-      const isApproved = !data.final_output_redacted.toLowerCase().includes('rejected');
+      const isApproved = data.final_output_redacted && !data.final_output_redacted.toLowerCase().includes('rejected');
       const badgeElem = getEl('current-card-decision-badge');
       if (badgeElem) {
         badgeElem.innerHTML = isApproved 
@@ -302,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       console.error('Decision evaluation error:', err);
-      showToast('System Error', 'AI Decision evaluation could not be completed. Please try again.', 'error');
+      showToast('Processing Error', 'Unable to process your request. Please verify the entered information and try again.', 'error');
     } finally {
       if (btnSubmit) {
         btnSubmit.disabled = false;
