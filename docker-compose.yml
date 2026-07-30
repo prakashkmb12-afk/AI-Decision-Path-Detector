@@ -1,45 +1,52 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Audit Database Service
-  postgres:
-    image: postgres:15-alpine
-    container_name: decision_path_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: decision_path_audit
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d decision_path_audit"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # FastAPI Decision Path Auditor Service
-  api:
-    build: .
-    container_name: decision_path_api
-    restart: always
+  # FastAPI Auditor Application Service
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_decision_auditor
     ports:
       - "8000:8000"
     environment:
-      - APP_NAME=PS-7.1 Decision Path Auditor
+      - APP_NAME=PS-7.1 Enterprise AI Decision Path Auditor
       - APP_ENV=production
       - DEBUG=False
       - HOST=0.0.0.0
       - PORT=8000
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/decision_path_audit
-      - SYNC_DATABASE_URL=postgresql+psycopg2://postgres:postgrespassword@postgres:5432/decision_path_audit
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres_secure_pass@db:5432/decision_path_audit
+      - SYNC_DATABASE_URL=postgresql+psycopg2://postgres:postgres_secure_pass@db:5432/decision_path_audit
       - GROQ_API_KEY=${GROQ_API_KEY}
       - GROQ_MODEL=llama-3.3-70b-versatile
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL Relational Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: audit_postgres_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_secure_pass
+      - POSTGRES_DB=decision_path_audit
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_audit_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  postgres_data:
+  postgres_audit_data:
