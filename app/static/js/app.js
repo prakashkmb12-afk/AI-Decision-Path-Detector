@@ -2,6 +2,31 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSessionId = null;
   let allSessionsCache = [];
 
+  // Theme Controls
+  const themeDarkBtn = document.getElementById('theme-dark');
+  const themeLightBtn = document.getElementById('theme-light');
+  const themeSystemBtn = document.getElementById('theme-system');
+
+  function applyTheme(theme) {
+    let activeTheme = theme;
+    if (theme === 'system') {
+      activeTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    document.documentElement.setAttribute('data-theme', activeTheme);
+    localStorage.setItem('app-theme', theme);
+
+    themeDarkBtn.classList.toggle('active', theme === 'dark');
+    themeLightBtn.classList.toggle('active', theme === 'light');
+    themeSystemBtn.classList.toggle('active', theme === 'system');
+  }
+
+  const savedTheme = localStorage.getItem('app-theme') || 'dark';
+  applyTheme(savedTheme);
+
+  themeDarkBtn.addEventListener('click', () => applyTheme('dark'));
+  themeLightBtn.addEventListener('click', () => applyTheme('light'));
+  themeSystemBtn.addEventListener('click', () => applyTheme('system'));
+
   // Form Elements
   const formAppName = document.getElementById('form-app-name');
   const formAppEmail = document.getElementById('form-app-email');
@@ -15,13 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const formAppScore = document.getElementById('form-app-score');
   const formAppPurpose = document.getElementById('form-app-purpose');
   
-  const btnFillCompliant = document.getElementById('btn-fill-compliant');
-  const btnFillNonCompliant = document.getElementById('btn-fill-non-compliant');
-  const btnRunSimulation = document.getElementById('btn-run-simulation');
+  const btnSubmitApp = document.getElementById('btn-submit-app');
+  const btnClearForm = document.getElementById('btn-clear-form');
+  const btnNewApp = document.getElementById('btn-new-app');
   const simulateErrorCheck = document.getElementById('simulate-error-check');
 
-  // Header & Explorer Elements
+  // Header & Right Panel Explorer Elements
   const sysDbStatus = document.getElementById('sys-db-status');
+  const explorerEmptyState = document.getElementById('explorer-empty-state');
+  const explorerDataSection = document.getElementById('explorer-data-section');
+
   const sessionTableBody = document.getElementById('session-table-body');
   const btnRefreshSessions = document.getElementById('btn-refresh-sessions');
   const filterSearch = document.getElementById('filter-search');
@@ -41,43 +69,37 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/health');
       const data = await res.json();
-      sysDbStatus.textContent = data.database === 'healthy' ? 'Audit Log Ledger: Active' : 'Audit Log Ledger: Offline';
+      sysDbStatus.textContent = data.database === 'healthy' ? 'Audit Ledger: Active' : 'Audit Ledger: Offline';
     } catch (err) {
-      sysDbStatus.textContent = 'Audit Log Ledger: Error';
+      sysDbStatus.textContent = 'Audit Ledger: Error';
     }
   }
 
-  // Quick Preset Fillers
-  btnFillCompliant.addEventListener('click', () => {
-    formAppName.value = 'Ramesh Kumar';
-    formAppEmail.value = 'ramesh.kumar@gmail.com';
-    formAppPhone.value = '+91 9876543210';
-    formAppPan.value = 'ABCDE1234F';
-    formAppAadhaar.value = '9999-8888-7777';
-    formAppAccount.value = '5432109876543';
-    formAppLoan.value = '500000';
-    formAppIncome.value = '1200000';
-    formAppEmployment.value = 'Salaried';
-    formAppScore.value = '780';
+  // Clear Form Handler
+  function resetApplicationForm() {
+    formAppName.value = '';
+    formAppEmail.value = '';
+    formAppPhone.value = '';
+    formAppPan.value = '';
+    formAppAadhaar.value = '';
+    formAppAccount.value = '';
+    formAppLoan.value = '';
+    formAppIncome.value = '';
+    formAppEmployment.value = '';
+    formAppScore.value = '';
     formAppPurpose.value = 'Personal Loan';
+  }
+
+  btnClearForm.addEventListener('click', resetApplicationForm);
+
+  btnNewApp.addEventListener('click', () => {
+    resetApplicationForm();
+    timelineSection.style.display = 'none';
+    formAppName.focus();
   });
 
-  btnFillNonCompliant.addEventListener('click', () => {
-    formAppName.value = 'Ramesh Kumar';
-    formAppEmail.value = 'ramesh.kumar@gmail.com';
-    formAppPhone.value = '+91 9876543210';
-    formAppPan.value = 'ABCDE1234F';
-    formAppAadhaar.value = '9999-8888-7777';
-    formAppAccount.value = '5432109876543';
-    formAppLoan.value = '3000000';
-    formAppIncome.value = '320000';
-    formAppEmployment.value = 'Contract Employee';
-    formAppScore.value = '598';
-    formAppPurpose.value = 'Personal Loan';
-  });
-
-  // Execute Loan Audit Simulation
-  btnRunSimulation.addEventListener('click', async () => {
+  // Submit Application Action
+  btnSubmitApp.addEventListener('click', async () => {
     const name = formAppName.value.trim() || 'Applicant';
     const email = formAppEmail.value.trim() || 'applicant@example.com';
     const phone = formAppPhone.value.trim() || '+91 9876543210';
@@ -90,14 +112,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const score = parseInt(formAppScore.value, 10) || 750;
     const purpose = formAppPurpose.value || 'Personal Loan';
 
-    // Formulate Prompt Dynamically
+    // Construct Prompt Dynamically
     const promptText = 
       `Evaluate loan approval for applicant ${name}. ` +
       `Credit Score: ${score}. Annual Income: ${income}. Employment: ${employment}. Loan Amount: ${loan}. ` +
       `Email: ${email}, Phone: ${phone}. PAN: ${pan}, Aadhaar: ${aadhaar}. Bank Account: ${account}. Purpose: ${purpose}.`;
 
-    btnRunSimulation.disabled = true;
-    btnRunSimulation.textContent = 'Running Decision Audit...';
+    btnSubmitApp.disabled = true;
+    btnSubmitApp.textContent = 'Processing Verification...';
 
     try {
       const payload = {
@@ -120,13 +142,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       currentSessionId = data.session_id;
 
+      // Reveal Data Panels
+      explorerEmptyState.style.display = 'none';
+      explorerDataSection.style.display = 'block';
+      btnNewApp.style.display = 'inline-flex';
+      btnRefreshSessions.style.display = 'inline-flex';
+
       await loadSessions();
       await viewTimeline(data.session_id);
     } catch (err) {
-      alert('Error executing decision audit: ' + err.message);
+      alert('Error processing application verification: ' + err.message);
     } finally {
-      btnRunSimulation.disabled = false;
-      btnRunSimulation.textContent = 'Run Decision Audit';
+      btnSubmitApp.disabled = false;
+      btnSubmitApp.textContent = 'Submit Application';
     }
   });
 
@@ -135,6 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/api/v1/audit/sessions');
       allSessionsCache = await res.json();
+
+      if (allSessionsCache.length > 0) {
+        explorerEmptyState.style.display = 'none';
+        explorerDataSection.style.display = 'block';
+        btnNewApp.style.display = 'inline-flex';
+        btnRefreshSessions.style.display = 'inline-flex';
+      }
+
       renderFilteredSessions();
     } catch (err) {
       console.error('Failed to load audit sessions:', err);
@@ -166,14 +202,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       return `
         <tr>
-          <td style="font-family: var(--font-mono); font-weight: 500; color: #fff;">${s.session_id}</td>
+          <td style="font-family: var(--font-mono); font-weight: 500; color: var(--text-primary);">${s.session_id}</td>
           <td>${s.user_id}</td>
           <td>${s.agent_name === 'LoanApprovalAgent' ? 'Loan Underwriting Workflow' : 'KYC Verification Workflow'}</td>
           <td>${statusBadge}</td>
           <td>${new Date(s.started_at).toLocaleTimeString()}</td>
           <td>
-            <button class="btn btn-secondary btn-sm btn-timeline" data-id="${s.session_id}">Timeline</button>
-            <button class="btn btn-primary btn-sm btn-report" data-id="${s.session_id}">Audit Report</button>
+            <button class="btn btn-secondary btn-sm btn-timeline" data-id="${s.session_id}">View Audit Timeline</button>
+            <button class="btn btn-primary btn-sm btn-report" data-id="${s.session_id}">View Audit Report</button>
           </td>
         </tr>
       `;
@@ -208,20 +244,20 @@ document.addEventListener('DOMContentLoaded', () => {
         let bodyHtml = '';
 
         if (step.event_type === 'USER_INPUT') {
-          stepTitle = 'Application Receipt & PII Sanitization';
+          stepTitle = 'Application Receipt & Data Sanitization';
           bodyHtml = `
             <div style="margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
-              The loan application prompt was received and passed through the automated Zero-Leak PII Sanitization Engine before audit storage.
+              The loan application was received and passed through automated data sanitization before audit storage.
             </div>
             <div class="kv-group">
-              <span class="kv-label">Sanitized Application Input</span>
+              <span class="kv-label">Secured Application Record</span>
               <div class="kv-value" style="background: var(--bg-dark); padding: 0.6rem 0.8rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.82rem; margin-top: 0.2rem; color: var(--text-primary);">
                 ${escapeHtml(step.user_input)}
               </div>
             </div>
           `;
         } else if (step.event_type === 'CONTEXT_RETRIEVAL') {
-          stepTitle = 'Underwriting Policy Context Retrieval';
+          stepTitle = 'Underwriting Policy Rule Retrieval';
           bodyHtml = `
             <div>
               <span class="kv-label">Active Policy Rules Applied</span>
@@ -231,11 +267,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           `;
         } else if (step.event_type === 'REASONING') {
-          stepTitle = 'Audit Logic Evaluation';
+          stepTitle = 'Audit Policy Finding';
           bodyHtml = `
             <div>
-              <span class="kv-label">Audit Evaluation Finding</span>
-              <div class="kv-value" style="color: var(--status-warning-text); background: rgba(217, 119, 6, 0.05); padding: 0.6rem 0.8rem; border-radius: 4px; border-left: 3px solid var(--status-warning-text); margin-top: 0.2rem;">
+              <span class="kv-label">Policy Trace Finding</span>
+              <div class="kv-value" style="color: var(--status-warning-text); background: var(--status-warning-bg); padding: 0.6rem 0.8rem; border-radius: 4px; border-left: 3px solid var(--status-warning-text); margin-top: 0.2rem;">
                 ${escapeHtml(step.intermediate_reasoning)}
               </div>
             </div>
@@ -246,17 +282,17 @@ document.addEventListener('DOMContentLoaded', () => {
           const tResp = step.tool_response || {};
 
           if (tName === 'verify_credit_score') {
-            stepTitle = 'Credit Bureau Score Verification';
+            stepTitle = 'Credit Score Verification';
             bodyHtml = `
               <div class="kv-grid">
-                <div class="kv-group"><span class="kv-label">Verified Credit Score</span><span class="kv-value" style="font-weight: 700;">${tResp.credit_score || tParams.credit_score || '-'}</span></div>
+                <div class="kv-group"><span class="kv-label">Applicant Credit Score</span><span class="kv-value" style="font-weight: 700;">${tResp.credit_score || tParams.credit_score || '-'}</span></div>
                 <div class="kv-group"><span class="kv-label">Bureau Rating Tier</span><span class="kv-value">${tResp.credit_tier || '-'}</span></div>
-                <div class="kv-group"><span class="kv-label">Required Score Threshold</span><span class="kv-value">700 Minimum</span></div>
-                <div class="kv-group"><span class="kv-label">Verification Result</span><span class="kv-value ${tResp.is_score_eligible ? 'status-pass' : 'status-fail'}">${tResp.is_score_eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}</span></div>
+                <div class="kv-group"><span class="kv-label">Required Minimum Score</span><span class="kv-value">700</span></div>
+                <div class="kv-group"><span class="kv-label">Verification Status</span><span class="kv-value ${tResp.is_score_eligible ? 'status-pass' : 'status-fail'}">${tResp.is_score_eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}</span></div>
               </div>
             `;
           } else if (tName === 'check_account_balance') {
-            stepTitle = 'Core Banking Account Ledger Verification';
+            stepTitle = 'Bank Account Verification';
             bodyHtml = `
               <div class="kv-grid">
                 <div class="kv-group"><span class="kv-label">Account Status</span><span class="kv-value status-pass">${tResp.account_status || 'ACTIVE'}</span></div>
@@ -264,33 +300,33 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             `;
           } else if (tName === 'evaluate_loan_underwriting') {
-            stepTitle = 'Policy Underwriting Matrix Evaluation';
+            stepTitle = 'Loan Eligibility Assessment';
             const isApp = tResp.approved;
             bodyHtml = `
               <div class="kv-grid" style="margin-bottom: 0.75rem;">
                 <div class="kv-group"><span class="kv-label">Requested Loan Amount</span><span class="kv-value">₹${Number(tParams.loan_amount || 0).toLocaleString('en-IN')}</span></div>
-                <div class="kv-group"><span class="kv-label">Underwriting Determination</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'POLICY PASSED (APPROVED)' : 'POLICY REJECTED'}</span></div>
+                <div class="kv-group"><span class="kv-label">Assessment Result</span><span class="kv-value ${isApp ? 'status-pass' : 'status-fail'}">${isApp ? 'ELIGIBLE (APPROVED)' : 'NOT ELIGIBLE (REJECTED)'}</span></div>
               </div>
               ${!isApp && tResp.rejection_reasons ? `
                 <div class="kv-group">
-                  <span class="kv-label">Failed Policy Condition(s)</span>
-                  <div class="kv-value status-fail" style="background: rgba(220,38,38,0.05); padding: 0.5rem; border-radius: 4px; border: 1px solid rgba(220,38,38,0.2); font-size: 0.82rem; margin-top: 0.25rem;">
+                  <span class="kv-label">Policy Reason</span>
+                  <div class="kv-value status-fail" style="background: var(--status-danger-bg); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--status-danger-border); font-size: 0.82rem; margin-top: 0.25rem;">
                     ${(tResp.rejection_reasons || []).join('; ')}
                   </div>
                 </div>
               ` : ''}
             `;
           } else {
-            stepTitle = 'Verification Step Completed';
-            bodyHtml = `<div class="kv-value">${escapeHtml(JSON.stringify(tResp))}</div>`;
+            stepTitle = 'System Verification Step';
+            bodyHtml = `<div class="kv-value">Verification Step Completed.</div>`;
           }
 
         } else if (step.event_type === 'FINAL_OUTPUT') {
-          stepTitle = 'Decision Generation & Determination';
+          stepTitle = 'Decision Determination';
           bodyHtml = `
             <div>
-              <span class="kv-label">Official Workflow Decision Result Output</span>
-              <div class="kv-value" style="background: rgba(37, 99, 235, 0.1); padding: 0.75rem; border-radius: 4px; border-left: 4px solid var(--accent-blue); font-weight: 500; margin-top: 0.2rem;">
+              <span class="kv-label">Formal Application Decision Result</span>
+              <div class="kv-value" style="background: var(--bg-surface-elevated); padding: 0.75rem; border-radius: 4px; border-left: 4px solid var(--accent-blue); font-weight: 500; margin-top: 0.2rem;">
                 ${escapeHtml(step.final_output)}
               </div>
             </div>
@@ -305,11 +341,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="timeline-item-header">
               <div>
                 <span class="timeline-step-tag">STEP ${step.step_number}</span>
-                <span style="font-weight: 600; color: #fff;">${stepTitle}</span>
+                <span style="font-weight: 600; color: var(--text-primary);">${stepTitle}</span>
               </div>
               <div>
-                <span class="badge badge-pii">PII Sanitized</span>
-                <span style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin-left: 0.5rem;">${new Date(step.created_at).toLocaleTimeString()}</span>
+                <span style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted);">${new Date(step.created_at).toLocaleTimeString()}</span>
               </div>
             </div>
             <div class="timeline-item-body">
@@ -361,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isApproved = toolResp.approved !== undefined ? toolResp.approved : true;
       const rejectionReasons = toolResp.rejection_reasons || [];
 
-      // Section 2: Applicant Info
+      // Section 2: Applicant Info (Protected)
       document.getElementById('rep-app-income').textContent = `₹${Number(annualIncome).toLocaleString('en-IN')}`;
       document.getElementById('rep-app-employment').textContent = empType;
       document.getElementById('rep-app-loan').textContent = `₹${Number(loanAmt).toLocaleString('en-IN')}`;
@@ -388,10 +423,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const amtPass = loanAmt <= maxLimit;
 
       const matrixRows = [
-        { req: "Credit Bureau Score", val: creditScore, thresh: ">= 700 Minimum", pass: csPass },
-        { req: "Annual Income Threshold", val: `₹${Number(annualIncome).toLocaleString('en-IN')}`, thresh: ">= ₹6,00,000 Minimum", pass: incPass },
-        { req: "Employment Eligibility", val: empType, thresh: "Salaried or Self-Employed", pass: empPass },
-        { req: "Loan Amount Limit", val: `₹${Number(loanAmt).toLocaleString('en-IN')}`, thresh: `<= 5x Income (₹${Number(maxLimit).toLocaleString('en-IN')})`, pass: amtPass }
+        { req: "Credit Score", val: creditScore, thresh: "700", pass: csPass },
+        { req: "Annual Income", val: `₹${Number(annualIncome).toLocaleString('en-IN')}`, thresh: "₹6,00,000", pass: incPass },
+        { req: "Employment Type", val: empType, thresh: "Salaried / Self-Employed", pass: empPass },
+        { req: "Loan Amount Limit", val: `₹${Number(loanAmt).toLocaleString('en-IN')}`, thresh: `₹${Number(maxLimit).toLocaleString('en-IN')}`, pass: amtPass }
       ];
 
       document.getElementById('rep-policy-table-body').innerHTML = matrixRows.map(r => `
@@ -403,12 +438,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </tr>
       `).join('');
 
-      // Section 6: Formal Decision Explanation Narrative
+      // Section 6: Formal Decision Narrative
       document.getElementById('rep-narrative').textContent = isApproved
         ? "Your application was carefully evaluated based on your identity, financial profile, employment details, and loan eligibility criteria. After verification, we found that all credit score, income, and employment parameters satisfy our lending policy. Your loan request has been approved."
         : "Your application was carefully evaluated based on your identity, financial profile, employment details, and loan eligibility criteria. After verification, we found that your credit score and annual income do not satisfy our minimum lending policy requirements. For this reason, your loan request could not be approved at this time.";
 
-      // Section 7: Recommended Next Action
+      // Section 7: Recommended Next Step
       document.getElementById('rep-next-steps').textContent = isApproved
         ? "Proceed to document verification and loan agreement execution with your designated loan officer."
         : "You may improve your credit score above 700 or provide additional financial documentation before applying again.";
@@ -431,5 +466,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Startup
   checkHealth();
-  loadSessions();
 });

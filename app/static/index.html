@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Decision Path Auditor - Enterprise AI Governance Portal</title>
+  <title>Enterprise AI Audit & Compliance Portal</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,22 +16,32 @@
     <div class="brand-title">
       <div class="brand-icon">DPA</div>
       <div class="brand-text">
-        <h1>Decision Path Auditor</h1>
-        <span>Enterprise AI Governance & Compliance Portal</span>
+        <h1>Enterprise AI Audit & Compliance Portal</h1>
+        <span>Transparent AI Decision Monitoring and Compliance</span>
       </div>
     </div>
-    <div class="system-badges">
-      <div class="sys-pill">
-        <div class="sys-dot"></div>
-        <span id="sys-db-status">Audit Log Ledger: Active</span>
+    
+    <div class="header-controls">
+      <div class="system-badges">
+        <div class="sys-pill">
+          <div class="sys-dot"></div>
+          <span id="sys-db-status">Audit Ledger: Active</span>
+        </div>
+        <div class="sys-pill">
+          <div class="sys-dot"></div>
+          <span>Personal Data Protection: Active</span>
+        </div>
+        <div class="sys-pill">
+          <div class="sys-dot"></div>
+          <span>Policy Engine: Online</span>
+        </div>
       </div>
-      <div class="sys-pill">
-        <div class="sys-dot"></div>
-        <span>PII Data Sanitization: Active</span>
-      </div>
-      <div class="sys-pill">
-        <div class="sys-dot"></div>
-        <span>Policy Compliance Engine: Active</span>
+
+      <!-- THEME SWITCHER -->
+      <div class="theme-selector">
+        <button class="theme-btn active" id="theme-dark" title="Dark Theme">Dark</button>
+        <button class="theme-btn" id="theme-light" title="Light Theme">Light</button>
+        <button class="theme-btn" id="theme-system" title="System Theme">System</button>
       </div>
     </div>
   </header>
@@ -40,18 +50,16 @@
   <main class="main-content">
     <div class="dashboard-layout">
       
-      <!-- LEFT COLUMN: INTERACTIVE LOAN APPLICATION FORM -->
+      <!-- LEFT COLUMN: LOAN APPLICATION FORM -->
       <aside class="card-panel">
         <div class="panel-title-bar">
-          <h2>Loan Application Entry</h2>
-        </div>
-
-        <div class="preset-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-fill-compliant">Fill Compliant Applicant (Score: 780)</button>
-          <button class="btn btn-danger-outline btn-sm" id="btn-fill-non-compliant">Fill Non-Compliant Applicant (Score: 598)</button>
+          <h2>Loan Application</h2>
         </div>
 
         <form id="loan-application-form">
+          
+          <div class="section-divider-title">Applicant Information</div>
+
           <div class="form-group">
             <label>Applicant Full Name</label>
             <input type="text" class="form-control" id="form-app-name" placeholder="e.g. Ramesh Kumar">
@@ -70,11 +78,11 @@
 
           <div class="form-grid-2">
             <div class="form-group">
-              <label>PAN Card Number</label>
+              <label>PAN Number</label>
               <input type="text" class="form-control" id="form-app-pan" placeholder="ABCDE1234F">
             </div>
             <div class="form-group">
-              <label>Aadhaar Card Number</label>
+              <label>Aadhaar Number</label>
               <input type="text" class="form-control" id="form-app-aadhaar" placeholder="9999-8888-7777">
             </div>
           </div>
@@ -84,9 +92,11 @@
             <input type="text" class="form-control" id="form-app-account" placeholder="5432109876543">
           </div>
 
+          <div class="section-divider-title">Loan Details</div>
+
           <div class="form-grid-2">
             <div class="form-group">
-              <label>Requested Loan (₹)</label>
+              <label>Loan Amount (₹)</label>
               <input type="number" class="form-control" id="form-app-loan" placeholder="e.g. 500000">
             </div>
             <div class="form-group">
@@ -97,7 +107,7 @@
 
           <div class="form-grid-2">
             <div class="form-group">
-              <label>Employment Category</label>
+              <label>Employment Type</label>
               <select class="form-select" id="form-app-employment">
                 <option value="">Select Category</option>
                 <option value="Salaried">Salaried Employee</option>
@@ -106,7 +116,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Credit Bureau Score</label>
+              <label>Credit Score</label>
               <input type="number" class="form-control" id="form-app-score" placeholder="e.g. 780 or 598">
             </div>
           </div>
@@ -117,75 +127,86 @@
               <option value="Personal Loan">Personal Loan</option>
               <option value="Home Loan">Home Loan</option>
               <option value="Auto Loan">Auto Loan</option>
-              <option value="Business Expansion">Business Expansion</option>
+              <option value="Business Loan">Business Loan</option>
             </select>
           </div>
 
-          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-            <input type="checkbox" id="simulate-error-check">
-            <label for="simulate-error-check" style="margin: 0; font-size: 0.8rem; cursor: pointer; text-transform: none;">Simulate System Outage (Error Audit)</label>
+          <div class="action-bar">
+            <button type="button" class="btn btn-primary" id="btn-submit-app" style="flex: 2;">
+              Submit Application
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-clear-form" style="flex: 1;">
+              Clear Form
+            </button>
           </div>
-
-          <button type="button" class="btn btn-primary" id="btn-run-simulation" style="width: 100%; margin-top: 0.5rem;">
-            Run Decision Audit
-          </button>
         </form>
       </aside>
 
-      <!-- RIGHT COLUMN: AUDIT RECORD EXPLORER & TIMELINE -->
+      <!-- RIGHT COLUMN: AUDIT EXPLORER & TIMELINE -->
       <section class="card-panel">
         <div class="panel-title-bar">
-          <h2>Audit Record Explorer</h2>
-          <button class="btn btn-secondary btn-sm" id="btn-refresh-sessions">Refresh Records</button>
+          <h2>Audit Explorer</h2>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary btn-sm" id="btn-new-app" style="display: none;">New Application</button>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-sessions" style="display: none;">Refresh</button>
+          </div>
         </div>
 
-        <!-- SEARCH & FILTER TOOLBAR -->
-        <div class="table-toolbar">
-          <input type="text" class="form-control" id="filter-search" placeholder="Search by Session ID or User ID..." style="max-width: 300px;">
-          
-          <select class="form-select" id="filter-workflow" style="max-width: 200px;">
-            <option value="">All Workflows</option>
-            <option value="LoanApprovalAgent">Loan Underwriting Workflow</option>
-            <option value="KYCVerificationAgent">KYC Verification Workflow</option>
-          </select>
-
-          <select class="form-select" id="filter-status" style="max-width: 160px;">
-            <option value="">All Statuses</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="FAILED">Failed</option>
-          </select>
+        <!-- INITIAL EMPTY STATE (WHEN NO RECORDS EXIST) -->
+        <div id="explorer-empty-state" class="empty-state-box">
+          <div class="empty-state-icon">AMP</div>
+          <div class="empty-state-title">No Audit Records Available</div>
+          <div class="empty-state-text">
+            Complete and submit a loan application to start system verification, process the decision, and generate an audit record.
+          </div>
         </div>
 
-        <!-- DATA TABLE -->
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Session ID</th>
-                <th>Applicant Identifier</th>
-                <th>Workflow</th>
-                <th>Status</th>
-                <th>Started Time</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="session-table-body">
-              <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No audit records found. Submit an application form to begin.</td></tr>
-            </tbody>
-          </table>
+        <!-- AUDIT SESSIONS DATA TABLE (SHOWN AFTER SUBMISSION) -->
+        <div id="explorer-data-section" style="display: none;">
+          <div class="table-toolbar">
+            <input type="text" class="form-control" id="filter-search" placeholder="Search by Session ID or User ID..." style="max-width: 300px;">
+            
+            <select class="form-select" id="filter-workflow" style="max-width: 200px;">
+              <option value="">All Workflows</option>
+              <option value="LoanApprovalAgent">Loan Underwriting Workflow</option>
+              <option value="KYCVerificationAgent">KYC Verification Workflow</option>
+            </select>
+
+            <select class="form-select" id="filter-status" style="max-width: 160px;">
+              <option value="">All Statuses</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="FAILED">Failed</option>
+            </select>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Session ID</th>
+                  <th>Applicant / User ID</th>
+                  <th>Workflow</th>
+                  <th>Status</th>
+                  <th>Started Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="session-table-body">
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <!-- RECONSTRUCTED DECISION TIMELINE -->
+        <!-- RECONSTRUCTED AUDIT TIMELINE (SHOWN AFTER SELECTING TIMELINE) -->
         <div id="timeline-section" style="margin-top: 2rem; display: none; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
           <div class="panel-title-bar">
-            <h2>Reconstructed Audit Journey: <span id="active-session-id" style="font-family: var(--font-mono); color: var(--accent-cyan);"></span></h2>
+            <h2>Audit Timeline: <span id="active-session-id" style="font-family: var(--font-mono); color: var(--accent-cyan);"></span></h2>
             <button class="btn btn-primary btn-sm" id="btn-generate-summary">
               View Audit Report
             </button>
           </div>
 
           <div class="timeline-list" id="timeline-container">
-            <!-- Dynamic 9-step business cards inserted here -->
           </div>
         </div>
 
@@ -199,14 +220,14 @@
     <div class="modal-window">
       <div class="modal-header">
         <h3>Decision Summary Report</h3>
-        <button class="btn btn-secondary btn-sm" id="btn-close-modal">Close</button>
+        <button class="btn btn-secondary btn-sm" id="btn-close-modal">Close Report</button>
       </div>
 
       <div class="modal-body" id="modal-report-body">
         
-        <!-- SECTION 1: AUDIT METADATA -->
+        <!-- SECTION 1: AUDIT INFORMATION -->
         <div class="report-section">
-          <div class="report-section-title">1. Audit Metadata</div>
+          <div class="report-section-title">Audit Information</div>
           <div class="kv-grid">
             <div class="kv-group"><span class="kv-label">Audit Session ID</span><span class="kv-value kv-value-mono" id="rep-session-id">-</span></div>
             <div class="kv-group"><span class="kv-label">Initiating User ID</span><span class="kv-value" id="rep-user-id">-</span></div>
@@ -215,79 +236,78 @@
           </div>
         </div>
 
-        <!-- SECTION 2: APPLICANT INFORMATION (PII REDACTED) -->
+        <!-- SECTION 2: APPLICANT INFORMATION (PERSONAL DATA PROTECTED) -->
         <div class="report-section">
-          <div class="report-section-title">2. Applicant Information (Sanitized View)</div>
+          <div class="report-section-title">Applicant Information (Personal Data Protected)</div>
           <div class="kv-grid">
-            <div class="kv-group"><span class="kv-label">Applicant Full Name</span><span class="kv-value" id="rep-app-name">[NAME_REDACTED]</span></div>
-            <div class="kv-group"><span class="kv-label">PAN Card Identifier</span><span class="kv-value kv-value-mono" id="rep-app-pan">[PAN_REDACTED]</span></div>
-            <div class="kv-group"><span class="kv-label">Email Address</span><span class="kv-value" id="rep-app-email">[EMAIL_REDACTED]</span></div>
-            <div class="kv-group"><span class="kv-label">Aadhaar Card Identifier</span><span class="kv-value kv-value-mono" id="rep-app-aadhaar">[AADHAAR_REDACTED]</span></div>
-            <div class="kv-group"><span class="kv-label">Phone Number</span><span class="kv-value" id="rep-app-phone">[PHONE_REDACTED]</span></div>
-            <div class="kv-group"><span class="kv-label">Bank Account Number</span><span class="kv-value kv-value-mono" id="rep-app-account">[ACCOUNT_REDACTED]</span></div>
+            <div class="kv-group"><span class="kv-label">Applicant Full Name</span><span class="kv-value" id="rep-app-name">[PROTECTED_NAME]</span></div>
+            <div class="kv-group"><span class="kv-label">PAN Number</span><span class="kv-value kv-value-mono" id="rep-app-pan">[PROTECTED_PAN]</span></div>
+            <div class="kv-group"><span class="kv-label">Email Address</span><span class="kv-value" id="rep-app-email">[PROTECTED_EMAIL]</span></div>
+            <div class="kv-group"><span class="kv-label">Aadhaar Number</span><span class="kv-value kv-value-mono" id="rep-app-aadhaar">[PROTECTED_AADHAAR]</span></div>
+            <div class="kv-group"><span class="kv-label">Phone Number</span><span class="kv-value" id="rep-app-phone">[PROTECTED_PHONE]</span></div>
+            <div class="kv-group"><span class="kv-label">Bank Account Number</span><span class="kv-value kv-value-mono" id="rep-app-account">[PROTECTED_ACCOUNT]</span></div>
             <div class="kv-group"><span class="kv-label">Annual Income</span><span class="kv-value" id="rep-app-income">-</span></div>
-            <div class="kv-group"><span class="kv-label">Employment Category</span><span class="kv-value" id="rep-app-employment">-</span></div>
+            <div class="kv-group"><span class="kv-label">Employment Type</span><span class="kv-value" id="rep-app-employment">-</span></div>
             <div class="kv-group"><span class="kv-label">Requested Loan Amount</span><span class="kv-value" id="rep-app-loan">-</span></div>
-            <div class="kv-group"><span class="kv-label">Credit Bureau Score</span><span class="kv-value" id="rep-app-score">-</span></div>
+            <div class="kv-group"><span class="kv-label">Credit Score</span><span class="kv-value" id="rep-app-score">-</span></div>
           </div>
         </div>
 
         <!-- SECTION 3: DECISION OUTCOME -->
         <div class="report-section">
-          <div class="report-section-title">3. Decision Outcome & Determination</div>
+          <div class="report-section-title">Decision Determination</div>
           <div class="kv-grid" style="margin-bottom: 1rem;">
-            <div class="kv-group"><span class="kv-label">Final Outcome</span><span class="kv-value" id="rep-decision-badge">-</span></div>
+            <div class="kv-group"><span class="kv-label">Final Decision</span><span class="kv-value" id="rep-decision-badge">-</span></div>
             <div class="kv-group"><span class="kv-label">Confidence Rating</span><span class="kv-value" id="rep-confidence">95.0%</span></div>
           </div>
           <div class="kv-group">
-            <span class="kv-label">Primary Reasons & Findings</span>
+            <span class="kv-label">Primary Findings</span>
             <div class="kv-value" id="rep-decision-reasons" style="margin-top: 0.25rem; line-height: 1.5; color: var(--text-primary);">
               -
             </div>
           </div>
         </div>
 
-        <!-- SECTION 4: VERIFICATION CHECKLIST -->
+        <!-- SECTION 4: VERIFICATION SUMMARY -->
         <div class="report-section">
-          <div class="report-section-title">4. Verifications Completed</div>
+          <div class="report-section-title">Verification Summary</div>
           <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem;" id="rep-verification-checklist">
-            <div>✓ Identity & PII Data Sanitization Completed</div>
-            <div>✓ Authorized Credit Bureau Score Lookup Completed</div>
-            <div>✓ Core Banking Account Ledger Verification Completed</div>
-            <div>✓ Employment Stability & Income Threshold Verification Completed</div>
-            <div>✓ Policy Underwriting Rules Matrix Evaluated</div>
+            <div>✓ Identity & Personal Data Protection Applied</div>
+            <div>✓ Credit Score Verification Completed</div>
+            <div>✓ Bank Account Verification Completed</div>
+            <div>✓ Employment & Income Threshold Verification Completed</div>
+            <div>✓ Policy Underwriting Assessment Completed</div>
           </div>
         </div>
 
-        <!-- SECTION 5: POLICY EVALUATION MATRIX TABLE -->
+        <!-- SECTION 5: POLICY EVALUATION MATRIX -->
         <div class="report-section">
-          <div class="report-section-title">5. Policy Evaluation Matrix</div>
+          <div class="report-section-title">Policy Evaluation</div>
           <table class="policy-table">
             <thead>
               <tr>
                 <th>Requirement</th>
-                <th>Applicant Parameter</th>
-                <th>Required Threshold</th>
-                <th>Evaluation Result</th>
+                <th>Applicant Value</th>
+                <th>Required Value</th>
+                <th>Evaluation Status</th>
               </tr>
             </thead>
             <tbody id="rep-policy-table-body">
-              <!-- Dynamic Policy Rows -->
             </tbody>
           </table>
         </div>
 
         <!-- SECTION 6: FORMAL DECISION NARRATIVE -->
         <div class="report-section">
-          <div class="report-section-title">6. Decision Explanation (Customer & Compliance View)</div>
+          <div class="report-section-title">Decision Explanation</div>
           <p id="rep-narrative" style="font-size: 0.88rem; line-height: 1.6; color: var(--text-primary);">
             -
           </p>
         </div>
 
-        <!-- SECTION 7: RECOMMENDED NEXT STEPS & GOVERNANCE -->
+        <!-- SECTION 7: RECOMMENDED NEXT STEP -->
         <div class="report-section">
-          <div class="report-section-title">7. Recommended Next Action</div>
+          <div class="report-section-title">Recommended Next Step</div>
           <p id="rep-next-steps" style="font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary);">
             -
           </p>
@@ -295,9 +315,9 @@
 
         <!-- SECTION 8: REGULATORY COMPLIANCE INTEGRITY -->
         <div class="report-section" style="margin-bottom: 0;">
-          <div class="report-section-title">8. Governance & Regulatory Integrity</div>
+          <div class="report-section-title">Regulatory Compliance Integrity</div>
           <div class="kv-grid">
-            <div class="kv-group"><span class="kv-label">PII Data Sanitized</span><span class="kv-value status-pass">Confirmed (Yes)</span></div>
+            <div class="kv-group"><span class="kv-label">Personal Data Secured</span><span class="kv-value status-pass">Confirmed (Yes)</span></div>
             <div class="kv-group"><span class="kv-label">Timeline Recorded</span><span class="kv-value status-pass">Confirmed (Yes)</span></div>
             <div class="kv-group"><span class="kv-label">Decision Trace Available</span><span class="kv-value status-pass">Confirmed (Yes)</span></div>
             <div class="kv-group"><span class="kv-label">Audit Log Integrity</span><span class="kv-value status-pass">Immutable (Complete)</span></div>
